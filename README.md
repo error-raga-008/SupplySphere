@@ -436,4 +436,4 @@ SupplySphere aims to provide a scalable, secure, and user-friendly procurement m
 
 # License
 
-This project is developed for educational and hackathon purposes.
+This project is developed for hackathon and education purpose only.
