@@ -1,13 +1,9 @@
-import React, { useRef } from 'react'
+import React from 'react'
 import { MdNotifications, MdSearch, MdMenu, MdPerson } from 'react-icons/md'
 import useAuth from '../hooks/useAuth'
-import NotificationBell from './notifications/NotificationBell'
-import NotificationPanel from './notifications/NotificationPanel'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
-  const bellRef = useRef(null)
-
 
   return (
     <header className="flex items-center justify-between px-6 py-4 bg-[var(--bg-white)] border-b border-[var(--border-light)] sticky top-0 z-10 shadow-[var(--shadow-sm)]">
@@ -25,24 +21,6 @@ export default function Navbar() {
             className="w-full bg-[var(--bg)] border border-[var(--border-light)] rounded-[var(--radius-full)] pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent transition-all"
           />
         </div>
-    <div className="flex items-center justify-between p-4 bg-white border-b relative z-30">
-      <div className="text-lg font-semibold">SupplySphere</div>
-      <div className="flex items-center gap-4">
-        {user && (
-          <div className="flex items-center gap-2">
-            <NotificationBell ref={bellRef} />
-            <div className="text-sm text-[var(--text-dark)]">
-              {user.name} ({user.role})
-            </div>
-          </div>
-        )}
-        <button
-          type="button"
-          className="text-sm text-red-600 hover:text-red-700 transition-colors"
-          onClick={logout}
-        >
-          Logout
-        </button>
       </div>
 
       <div className="flex items-center gap-5">
@@ -77,7 +55,7 @@ export default function Navbar() {
               <div className="h-px bg-[var(--border-light)] my-1"></div>
               <button 
                 onClick={logout}
-                className="w-full text-left px-4 py-2 text-sm text-[#f23838] hover:cursor-pointer hover:text-[#e74b4b] hover:bg-opacity-10 transition-colors"
+                className="w-full text-left px-4 py-2 text-sm text-[#f23838] hover:cursor-pointer hover:text-re hover:bg-opacity-10 transition-colors"
               >
                 Logout
               </button>
@@ -85,8 +63,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {user && <NotificationPanel bellRef={bellRef} />}
-    </div>
+      </div>
     </header>
   )
 }
