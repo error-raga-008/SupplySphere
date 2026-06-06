@@ -16,6 +16,7 @@ from core.views import (
     PurchaseOrderViewSet,
     QuotationViewSet,
     RecentInvoicesAPIView,
+    ReportsAnalyticsAPIView,
     RecentPurchaseOrdersAPIView,
     RecentQuotationsAPIView,
     RecentRFQsAPIView,
@@ -55,6 +56,8 @@ urlpatterns = [
     path('dashboard/pending-approvals/', PendingApprovalsAPIView.as_view(),    name='dashboard-pending-approvals'),
     path('dashboard/recent-purchase-orders/', RecentPurchaseOrdersAPIView.as_view(), name='dashboard-recent-pos'),
     path('dashboard/recent-invoices/', RecentInvoicesAPIView.as_view(),        name='dashboard-recent-invoices'),
+    # Reports
+    path('reports/analytics/',       ReportsAnalyticsAPIView.as_view(),        name='reports-analytics'),
     # ViewSets
     path('', include(router.urls)),
 ]

@@ -154,3 +154,17 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# ── Email ──────────────────────────────────────────────────────────────────
+# Defaults to the console backend so invoice emails work out-of-the-box in
+# development (the message is printed to the runserver console). To send real
+# email, set EMAIL_BACKEND + SMTP credentials in the .env file.
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'true').lower() == 'true'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'SupplySphere <no-reply@supplysphere.local>')
+COMPANY_NAME = os.getenv('COMPANY_NAME', 'SupplySphere')

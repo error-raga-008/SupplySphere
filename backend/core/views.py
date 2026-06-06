@@ -1,7 +1,9 @@
 from datetime import timedelta
 from decimal import Decimal
 
-from django.db.models import DecimalField, Sum, Value
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.db.models import Count, DecimalField, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework import filters, status, viewsets
@@ -295,6 +297,87 @@ class RecentInvoicesAPIView(APIView):
     def get(self, request):
         queryset = Invoice.objects.select_related('vendor').order_by('-created_at')[:10]
         return Response(RecentInvoiceSerializer(queryset, many=True).data)
+
+
+# ── Reports / Analytics ───────────────────────────────────────────────────
+
+_MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+
+def _last_n_months(n=6):
+    """Return [(year, month), ...] for the last n months, oldest first."""
+    now = timezone.now()
+    buckets = []
+    for i in range(n - 1, -1, -1):
+        m = now.month - i
+        y = now.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        buckets.append((y, m))
+    return buckets
+
+
+class ReportsAnalyticsAPIView(APIView):
+    """Live procurement analytics: monthly activity, spend trend, top vendors,
+    and spend-by-category. Spend is measured by non-cancelled purchase orders."""
+    permission_classes = [CanViewDashboard]
+
+    def get(self, request):
+        spend_field = Coalesce(Sum('total_amount'), Value(Decimal('0')), output_field=DecimalField())
+        active_pos = PurchaseOrder.objects.exclude(status='cancelled')
+
+        # ── Monthly activity + spend ──
+        monthly = []
+        for year, month in _last_n_months(6):
+            pos_qs = active_pos.filter(created_at__year=year, created_at__month=month)
+            spend = pos_qs.aggregate(t=spend_field)['t']
+            monthly.append({
+                'month': _MONTH_NAMES[month - 1],
+                'rfqs': RFQ.objects.filter(created_at__year=year, created_at__month=month).count(),
+                'quotations': Quotation.objects.filter(created_at__year=year, created_at__month=month).count(),
+                'pos': pos_qs.count(),
+                'spend': float(spend),
+            })
+
+        this_month = monthly[-1] if monthly else {'rfqs': 0, 'quotations': 0, 'pos': 0, 'spend': 0.0}
+        summary = {
+            'total_rfqs': sum(m['rfqs'] for m in monthly),
+            'total_quotations': sum(m['quotations'] for m in monthly),
+            'total_pos': sum(m['pos'] for m in monthly),
+            'total_spend': float(sum((Decimal(str(m['spend'])) for m in monthly), Decimal('0'))),
+            'this_month': this_month,
+        }
+
+        # ── Top vendors by spend ──
+        top = (
+            active_pos.values('vendor_id', 'vendor__name')
+            .annotate(spend=spend_field, pos=Count('id'))
+            .order_by('-spend')[:5]
+        )
+        top_vendors = [
+            {'name': r['vendor__name'] or 'Unknown', 'spend': float(r['spend']), 'pos': r['pos']}
+            for r in top
+        ]
+
+        # ── Spend by vendor category ──
+        cats = (
+            active_pos.values('vendor__category__name')
+            .annotate(spend=spend_field)
+            .order_by('-spend')
+        )
+        category_spend = [
+            {'name': r['vendor__category__name'] or 'Uncategorized', 'value': float(r['spend'])}
+            for r in cats if r['spend'] and r['spend'] > 0
+        ]
+
+        return Response({
+            'summary': summary,
+            'monthly': monthly,
+            'top_vendors': top_vendors,
+            'category_spend': category_spend,
+        })
 
 
 # ── Notification ViewSet ──────────────────────────────────────────────────
@@ -796,6 +879,77 @@ class PurchaseOrderViewSet(PermissionMapMixin, viewsets.ModelViewSet):
         return Response(PurchaseOrderSerializer(po).data)
 
 
+# ── Invoice email rendering ───────────────────────────────────────────────
+
+def _inr(amount):
+    return f'₹{Decimal(amount or 0):,.2f}'
+
+
+def _build_invoice_email(invoice):
+    """Return (subject, text_body, html_body) for an invoice email."""
+    company = settings.COMPANY_NAME
+    vendor_name = invoice.vendor.name if invoice.vendor_id else 'Vendor'
+    po_number = invoice.po.po_number if invoice.po_id else '-'
+    subject = f'Invoice {invoice.invoice_number} from {company}'
+
+    lines = [
+        ('Subtotal', invoice.subtotal),
+        ('CGST', invoice.cgst_amount),
+        ('SGST', invoice.sgst_amount),
+        ('IGST', invoice.igst_amount),
+        ('Discount', -invoice.discount_amount),
+    ]
+    line_text = '\n'.join(f'  {label:<10} {_inr(value)}' for label, value in lines if value)
+
+    text_body = (
+        f'Dear {vendor_name},\n\n'
+        f'Please find the details of invoice {invoice.invoice_number} below.\n\n'
+        f'Invoice Number : {invoice.invoice_number}\n'
+        f'PO Number      : {po_number}\n'
+        f'Issue Date     : {invoice.issue_date}\n'
+        f'Due Date       : {invoice.due_date}\n'
+        f'Status         : {invoice.status.upper()}\n\n'
+        f'{line_text}\n'
+        f'  {"Total":<10} {_inr(invoice.total_amount)}\n'
+        f'  {"Paid":<10} {_inr(invoice.amount_paid)}\n'
+        f'  {"Due":<10} {_inr(invoice.amount_due)}\n\n'
+        f'{("Notes: " + invoice.notes) if invoice.notes else ""}\n\n'
+        f'Regards,\n{company}'
+    )
+
+    rows = ''.join(
+        f'<tr><td style="padding:6px 0;color:#5E6C84">{label}</td>'
+        f'<td style="padding:6px 0;text-align:right;font-family:monospace">{_inr(value)}</td></tr>'
+        for label, value in lines if value
+    )
+    html_body = f"""\
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#172B4D">
+  <div style="background:#172B4D;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0">
+    <div style="font-size:18px;font-weight:700">{company}</div>
+    <div style="font-size:13px;opacity:.85;margin-top:2px">Tax Invoice</div>
+  </div>
+  <div style="border:1px solid #DFE1E6;border-top:none;border-radius:0 0 8px 8px;padding:24px">
+    <p style="margin:0 0 16px">Dear <strong>{vendor_name}</strong>, please find the details of your invoice below.</p>
+    <table style="width:100%;font-size:13px;margin-bottom:16px">
+      <tr><td style="color:#5E6C84;padding:4px 0">Invoice Number</td><td style="text-align:right;font-weight:600">{invoice.invoice_number}</td></tr>
+      <tr><td style="color:#5E6C84;padding:4px 0">PO Number</td><td style="text-align:right">{po_number}</td></tr>
+      <tr><td style="color:#5E6C84;padding:4px 0">Issue Date</td><td style="text-align:right">{invoice.issue_date}</td></tr>
+      <tr><td style="color:#5E6C84;padding:4px 0">Due Date</td><td style="text-align:right">{invoice.due_date}</td></tr>
+      <tr><td style="color:#5E6C84;padding:4px 0">Status</td><td style="text-align:right;text-transform:uppercase;font-weight:600">{invoice.status}</td></tr>
+    </table>
+    <table style="width:100%;font-size:13px;border-top:1px solid #EBECF0;padding-top:8px">
+      {rows}
+      <tr><td style="padding:8px 0;border-top:2px solid #DFE1E6;font-weight:700">Total</td><td style="padding:8px 0;border-top:2px solid #DFE1E6;text-align:right;font-weight:700;font-family:monospace">{_inr(invoice.total_amount)}</td></tr>
+      <tr><td style="padding:4px 0;color:#5E6C84">Paid</td><td style="padding:4px 0;text-align:right;font-family:monospace">{_inr(invoice.amount_paid)}</td></tr>
+      <tr><td style="padding:4px 0;font-weight:700;color:#DE350B">Amount Due</td><td style="padding:4px 0;text-align:right;font-weight:700;font-family:monospace;color:#DE350B">{_inr(invoice.amount_due)}</td></tr>
+    </table>
+    {f'<p style="margin:16px 0 0;font-size:13px;color:#5E6C84"><strong>Notes:</strong> {invoice.notes}</p>' if invoice.notes else ''}
+    <p style="margin:24px 0 0;font-size:12px;color:#97A0AF">Regards,<br/>{company}</p>
+  </div>
+</div>"""
+    return subject, text_body, html_body
+
+
 # ── Invoice ViewSet ───────────────────────────────────────────────────────
 
 class InvoiceViewSet(PermissionMapMixin, viewsets.ModelViewSet):
@@ -811,6 +965,7 @@ class InvoiceViewSet(PermissionMapMixin, viewsets.ModelViewSet):
         'create': [CanCreatePO],
         'mark_sent': [CanCreatePO],
         'mark_paid': [CanApprovePO],
+        'email': [CanCreatePO],
     }
 
     def get_queryset(self):
@@ -874,6 +1029,33 @@ class InvoiceViewSet(PermissionMapMixin, viewsets.ModelViewSet):
         invoice.refresh_from_db()  # re-fetch MySQL generated amount_due
         create_activity_log(user=request.user, action='invoice.paid', entity_type='invoice', entity_id=invoice.id, request=request)
         return Response(InvoiceSerializer(invoice).data)
+
+    @action(detail=True, methods=['post'])
+    def email(self, request, pk=None):
+        invoice = self.get_object()
+        recipient = (invoice.vendor.email or '').strip() if invoice.vendor_id else ''
+        if not recipient:
+            return Response({'detail': 'Vendor has no email address on file.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        subject, text_body, html_body = _build_invoice_email(invoice)
+        message = EmailMultiAlternatives(subject, text_body, settings.DEFAULT_FROM_EMAIL, [recipient])
+        message.attach_alternative(html_body, 'text/html')
+        try:
+            message.send(fail_silently=False)
+        except Exception as exc:  # SMTP / connection failure
+            return Response({'detail': f'Failed to send email: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        # Emailing the invoice to the vendor marks a draft as sent.
+        if invoice.status == 'draft':
+            invoice.status = 'sent'
+            invoice.save(update_fields=['status'])
+
+        create_activity_log(
+            user=request.user, action='invoice.emailed',
+            entity_type='invoice', entity_id=invoice.id,
+            new_values={'to': recipient}, request=request,
+        )
+        return Response({'detail': f'Invoice emailed to {recipient}.', 'recipient': recipient, 'status': invoice.status})
 
 
 # ── Activity Log ViewSet ──────────────────────────────────────────────────

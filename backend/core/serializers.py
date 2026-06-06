@@ -496,6 +496,7 @@ class POCreateSerializer(serializers.Serializer):
 
 class InvoiceSerializer(serializers.ModelSerializer):
     vendor_name = serializers.CharField(source='vendor.name', read_only=True, default=None)
+    vendor_email = serializers.CharField(source='vendor.email', read_only=True, default=None)
     po_number = serializers.CharField(source='po.po_number', read_only=True, default=None)
     created_by_name = serializers.CharField(source='created_by.name', read_only=True, default=None)
 
@@ -503,7 +504,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Invoice
         fields = [
             'id', 'invoice_number', 'po_id', 'po_number',
-            'vendor_id', 'vendor_name', 'created_by_name', 'status',
+            'vendor_id', 'vendor_name', 'vendor_email', 'created_by_name', 'status',
             'issue_date', 'due_date',
             'subtotal', 'cgst_amount', 'sgst_amount', 'igst_amount',
             'discount_amount', 'total_amount', 'amount_paid', 'amount_due',

@@ -4,34 +4,19 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   PieChart, Pie, Cell, LineChart, Line,
 } from 'recharts'
-import api from '../services/api'
+import { getAnalytics } from '../services/reportService'
 
-// ── Mock data for charts ──────────────────────────────────────────────────
+const PALETTE = ['#0052CC', '#00875A', '#974F0C', '#403294', '#008DA6', '#5E6C84', '#DE350B', '#FF991F']
 
-const MONTHLY_DATA = [
-  { month: 'Jan', rfqs: 4, quotations: 9, pos: 3, spend: 85000 },
-  { month: 'Feb', rfqs: 6, quotations: 14, pos: 5, spend: 112000 },
-  { month: 'Mar', rfqs: 3, quotations: 8, pos: 4, spend: 97000 },
-  { month: 'Apr', rfqs: 8, quotations: 18, pos: 7, spend: 143000 },
-  { month: 'May', rfqs: 5, quotations: 11, pos: 4, spend: 121000 },
-  { month: 'Jun', rfqs: 6, quotations: 13, pos: 5, spend: 123456 },
-]
-
-const VENDOR_CATEGORY = [
-  { name: 'IT',           value: 38, color: '#0052CC' },
-  { name: 'Construction', value: 27, color: '#00875A' },
-  { name: 'Logistics',    value: 18, color: '#974F0C' },
-  { name: 'Healthcare',   value: 10, color: '#403294' },
-  { name: 'Others',       value: 7,  color: '#5E6C84' },
-]
-
-const TOP_VENDORS = [
-  { name: 'Tech Core LTD',          spend: 280000, pos: 3 },
-  { name: 'Infra Supplies Pvt Ltd', spend: 220000, pos: 2 },
-  { name: 'OfficeZone Furniture',   spend: 174000, pos: 2 },
-  { name: 'CloudNet Solutions',     spend: 152000, pos: 1 },
-  { name: 'Medi Pharma Supplies',   spend: 98000,  pos: 1 },
-]
+const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN')
+const compact = n => {
+  const v = Number(n || 0)
+  if (v >= 10000000) return `₹${(v / 10000000).toFixed(2)}Cr`
+  if (v >= 100000) return `₹${(v / 100000).toFixed(2)}L`
+  if (v >= 1000) return `₹${(v / 1000).toFixed(1)}k`
+  return inr(v)
+}
+const delta = n => (Number(n) > 0 ? `+${n} this month` : 'No activity this month')
 
 function StatCard({ title, value, icon: Icon, color, sub }) {
   return (
@@ -55,7 +40,7 @@ function ChartTooltip({ active, payload, label }) {
       <div style={{ fontWeight: 700, color: 'var(--text-dark)', marginBottom: 6 }}>{label}</div>
       {payload.map(p => (
         <div key={p.dataKey} style={{ color: p.color, marginBottom: 2 }}>
-          {p.name}: <strong>{p.dataKey === 'spend' ? `₹${Number(p.value).toLocaleString('en-IN')}` : p.value}</strong>
+          {p.name}: <strong>{p.dataKey === 'spend' ? inr(p.value) : p.value}</strong>
         </div>
       ))}
     </div>
@@ -71,37 +56,67 @@ function SectionHeader({ title, sub }) {
   )
 }
 
+const card = { background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', boxShadow: 'var(--shadow-sm)' }
+
 export default function Reports() {
-  const [summary, setSummary] = useState(null)
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    api.get('/dashboard/').then(r => setSummary(r.data)).catch(() => {})
+    let active = true
+    setLoading(true)
+    getAnalytics()
+      .then(r => { if (active) { setData(r.data); setError('') } })
+      .catch(() => { if (active) setError('Could not load analytics. Please try again.') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
   }, [])
+
+  if (loading) {
+    return <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, fontFamily: 'var(--font)' }}>Loading analytics…</div>
+  }
+  if (error) {
+    return <div style={{ padding: 48, textAlign: 'center', color: 'var(--danger)', fontSize: 14, fontFamily: 'var(--font)' }}>{error}</div>
+  }
+
+  const summary = data?.summary || {}
+  const tm = summary.this_month || {}
+  const monthly = data?.monthly || []
+  const topVendors = data?.top_vendors || []
+  const categoryRaw = data?.category_spend || []
+  const catTotal = categoryRaw.reduce((s, c) => s + Number(c.value || 0), 0) || 1
+  const categories = categoryRaw.map((c, i) => ({
+    name: c.name,
+    value: c.value,
+    pct: Math.round((Number(c.value) / catTotal) * 100),
+    color: PALETTE[i % PALETTE.length],
+  }))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, fontFamily: 'var(--font)' }}>
       <div>
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-dark)' }}>Reports & Analytics</h1>
-        <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>Procurement performance overview for the current period</p>
+        <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>Live procurement performance over the last 6 months</p>
       </div>
 
       {/* Summary stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <StatCard title="Total RFQs (6mo)" value={32} icon={FiFileText} color="#0052CC" sub="+8 this month" />
-        <StatCard title="Total Quotations" value={73} icon={FiTrendingUp} color="#403294" sub="+13 this month" />
-        <StatCard title="Purchase Orders" value={24} icon={FiShoppingCart} color="#00875A" sub="+5 this month" />
-        <StatCard title="Total Spend (6mo)" value="₹6.8L" icon={FiDollarSign} color="#974F0C" sub="+₹1.2L this month" />
+        <StatCard title="Total RFQs (6mo)" value={summary.total_rfqs ?? 0} icon={FiFileText} color="#0052CC" sub={delta(tm.rfqs)} />
+        <StatCard title="Total Quotations" value={summary.total_quotations ?? 0} icon={FiTrendingUp} color="#403294" sub={delta(tm.quotations)} />
+        <StatCard title="Purchase Orders" value={summary.total_pos ?? 0} icon={FiShoppingCart} color="#00875A" sub={delta(tm.pos)} />
+        <StatCard title="Total Spend (6mo)" value={compact(summary.total_spend)} icon={FiDollarSign} color="#974F0C" sub={`${compact(tm.spend)} this month`} />
       </div>
 
       {/* Activity + Spend chart */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div style={{ background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={card}>
           <SectionHeader title="Monthly Activity" sub="RFQs, Quotations, and POs per month" />
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={MONTHLY_DATA} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <BarChart data={monthly} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip content={<ChartTooltip />} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="rfqs" name="RFQs" fill="#0052CC" radius={[3, 3, 0, 0]} />
@@ -111,13 +126,13 @@ export default function Reports() {
           </ResponsiveContainer>
         </div>
 
-        <div style={{ background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={card}>
           <SectionHeader title="Monthly Spend Trend" sub="Total procurement spend (₹)" />
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={MONTHLY_DATA} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <LineChart data={monthly} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
+              <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
               <Tooltip content={<ChartTooltip />} />
               <Line type="monotone" dataKey="spend" stroke="#0052CC" strokeWidth={2.5} dot={{ r: 4, fill: '#0052CC' }} activeDot={{ r: 6 }} name="Spend" />
             </LineChart>
@@ -127,27 +142,34 @@ export default function Reports() {
 
       {/* Vendor breakdown */}
       <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 16 }}>
-        <div style={{ background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={card}>
           <SectionHeader title="Spend by Category" sub="" />
-          <PieChart width={180} height={180} style={{ margin: '0 auto' }}>
-            <Pie data={VENDOR_CATEGORY} dataKey="value" cx={85} cy={85} outerRadius={80} paddingAngle={3} strokeWidth={0}>
-              {VENDOR_CATEGORY.map((e, i) => <Cell key={i} fill={e.color} />)}
-            </Pie>
-          </PieChart>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
-            {VENDOR_CATEGORY.map(c => (
-              <div key={c.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: 'var(--text)' }}>{c.name}</span>
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dark)' }}>{c.value}%</span>
+          {categories.length === 0 ? (
+            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12.5 }}>No spend data yet</div>
+          ) : (
+            <>
+              <PieChart width={180} height={180} style={{ margin: '0 auto' }}>
+                <Pie data={categories} dataKey="value" cx={85} cy={85} outerRadius={80} paddingAngle={3} strokeWidth={0}>
+                  {categories.map((e, i) => <Cell key={i} fill={e.color} />)}
+                </Pie>
+                <Tooltip formatter={v => inr(v)} />
+              </PieChart>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+                {categories.map(c => (
+                  <div key={c.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: 'var(--text)' }}>{c.name}</span>
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dark)' }}>{c.pct}%</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
 
-        <div style={{ background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={card}>
           <SectionHeader title="Top Vendors by Spend" sub="Sorted by total procurement spend" />
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -158,12 +180,14 @@ export default function Reports() {
               </tr>
             </thead>
             <tbody>
-              {TOP_VENDORS.map((v, idx) => (
-                <tr key={v.name} style={{ borderBottom: idx < TOP_VENDORS.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+              {topVendors.length === 0 ? (
+                <tr><td colSpan={4} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No purchase orders yet</td></tr>
+              ) : topVendors.map((v, idx) => (
+                <tr key={v.name + idx} style={{ borderBottom: idx < topVendors.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
                   <td style={{ padding: '11px 14px', fontSize: 13, fontWeight: 600, color: 'var(--text-dark)' }}>{v.name}</td>
-                  <td style={{ padding: '11px 14px', fontSize: 13, fontFamily: 'monospace', color: 'var(--primary)' }}>₹{v.spend.toLocaleString('en-IN')}</td>
+                  <td style={{ padding: '11px 14px', fontSize: 13, fontFamily: 'monospace', color: 'var(--primary)' }}>{inr(v.spend)}</td>
                   <td style={{ padding: '11px 14px', fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>{v.pos}</td>
-                  <td style={{ padding: '11px 14px', fontSize: 13, fontFamily: 'monospace', color: 'var(--text-muted)' }}>₹{Math.round(v.spend / v.pos).toLocaleString('en-IN')}</td>
+                  <td style={{ padding: '11px 14px', fontSize: 13, fontFamily: 'monospace', color: 'var(--text-muted)' }}>{inr(v.pos ? Math.round(v.spend / v.pos) : 0)}</td>
                 </tr>
               ))}
             </tbody>
