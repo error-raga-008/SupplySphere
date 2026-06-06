@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS vendor_categories (
 
 CREATE TABLE IF NOT EXISTS vendors (
     id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    user_id          BIGINT UNSIGNED,
+    user_id          BIGINT,
     category_id      SMALLINT UNSIGNED,
     company_name     VARCHAR(200)  NOT NULL,
     contact_person   VARCHAR(150),
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS rfqs (
     rfq_number          VARCHAR(30)   NOT NULL UNIQUE,
     title               VARCHAR(255)  NOT NULL,
     description         TEXT,
-    created_by          BIGINT UNSIGNED NOT NULL,
+    created_by          BIGINT NOT NULL,
     status              ENUM('draft','published','closed','cancelled') NOT NULL DEFAULT 'draft',
     submission_deadline DATETIME      NOT NULL,
     created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS quotation_items (
 CREATE TABLE IF NOT EXISTS approval_workflows (
     id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     quotation_id  INT UNSIGNED NOT NULL UNIQUE,
-    initiated_by  BIGINT UNSIGNED NOT NULL,
+    initiated_by  BIGINT NOT NULL,
     status        ENUM('pending','approved','rejected','escalated') NOT NULL DEFAULT 'pending',
     initiated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     resolved_at   DATETIME     DEFAULT NULL,
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS approval_workflows (
 CREATE TABLE IF NOT EXISTS approval_steps (
     id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     workflow_id  INT UNSIGNED NOT NULL,
-    approver_id  BIGINT UNSIGNED NOT NULL,
+    approver_id  BIGINT NOT NULL,
     step_order   TINYINT UNSIGNED NOT NULL DEFAULT 1,
     status       ENUM('pending','approved','rejected','skipped') NOT NULL DEFAULT 'pending',
     remarks      TEXT,
@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
     po_number        VARCHAR(30)   NOT NULL UNIQUE,
     quotation_id     INT UNSIGNED  NOT NULL UNIQUE,
     vendor_id        INT UNSIGNED  NOT NULL,
-    created_by       BIGINT UNSIGNED NOT NULL,
+    created_by       BIGINT NOT NULL,
     status           ENUM('draft','issued','acknowledged','completed','cancelled') NOT NULL DEFAULT 'draft',
     delivery_date    DATE          DEFAULT NULL,
     billing_address  TEXT,
@@ -197,7 +197,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     invoice_number  VARCHAR(30)   NOT NULL UNIQUE,
     po_id           INT UNSIGNED  NOT NULL,
     vendor_id       INT UNSIGNED  NOT NULL,
-    created_by      BIGINT UNSIGNED NOT NULL,
+    created_by      BIGINT NOT NULL,
     status          ENUM('draft','sent','paid','overdue','cancelled') NOT NULL DEFAULT 'draft',
     issue_date      DATE          NOT NULL,
     due_date        DATE          NOT NULL,
@@ -241,7 +241,7 @@ CREATE TABLE IF NOT EXISTS invoice_payments (
     payment_date  DATE          NOT NULL,
     payment_mode  ENUM('bank_transfer','cheque','upi','cash','other') NOT NULL DEFAULT 'bank_transfer',
     reference_no  VARCHAR(100),
-    recorded_by   BIGINT UNSIGNED NOT NULL,
+    recorded_by   BIGINT NOT NULL,
     created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_pay_invoice  FOREIGN KEY (invoice_id)  REFERENCES invoices(id)  ON DELETE CASCADE,
     CONSTRAINT fk_pay_recorder FOREIGN KEY (recorded_by) REFERENCES users(id)
@@ -269,11 +269,11 @@ CREATE TABLE IF NOT EXISTS monthly_procurement_summary (
 -- INDEXES
 -- ============================================================
 
-CREATE INDEX IF NOT EXISTS idx_vendors_email      ON vendors(email);
-CREATE INDEX IF NOT EXISTS idx_vendors_status     ON vendors(status);
-CREATE INDEX IF NOT EXISTS idx_rfqs_status        ON rfqs(status);
-CREATE INDEX IF NOT EXISTS idx_rfqs_deadline      ON rfqs(submission_deadline);
-CREATE INDEX IF NOT EXISTS idx_quot_status        ON quotations(status);
-CREATE INDEX IF NOT EXISTS idx_po_status          ON purchase_orders(status);
-CREATE INDEX IF NOT EXISTS idx_inv_status         ON invoices(status);
-CREATE INDEX IF NOT EXISTS idx_inv_due_date       ON invoices(due_date)
+CREATE INDEX idx_vendors_email      ON vendors(email);
+CREATE INDEX idx_vendors_status     ON vendors(status);
+CREATE INDEX idx_rfqs_status        ON rfqs(status);
+CREATE INDEX idx_rfqs_deadline      ON rfqs(submission_deadline);
+CREATE INDEX idx_quot_status        ON quotations(status);
+CREATE INDEX idx_po_status          ON purchase_orders(status);
+CREATE INDEX idx_inv_status         ON invoices(status);
+CREATE INDEX idx_inv_due_date       ON invoices(due_date)

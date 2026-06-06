@@ -49,8 +49,19 @@ export default function Signup() {
       setSuccess(true)
       window.setTimeout(() => navigate('/login', { replace: true }), 1800)
     } catch (error) {
-      const payload = error.response?.data
-      const message = payload?.detail || payload?.message || payload?.email?.[0] || 'Registration failed. Try again.'
+      if (!error.response) {
+        setServerError('Cannot connect to server. Make sure the backend is running.')
+        return
+      }
+      const payload = error.response.data
+      // DRF returns field errors as { field: ["msg"] } or { detail: "msg" }
+      const message =
+        payload?.detail ||
+        payload?.message ||
+        Object.entries(payload || {})
+          .map(([field, errs]) => `${field}: ${Array.isArray(errs) ? errs[0] : errs}`)
+          .join(' | ') ||
+        'Registration failed. Try again.'
       setServerError(message)
     }
   }
