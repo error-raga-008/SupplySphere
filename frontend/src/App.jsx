@@ -1,6 +1,7 @@
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { NotificationProvider } from './context/NotificationContext'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
@@ -21,6 +22,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 export default function App() {
   return (
     <AuthProvider>
+      <NotificationProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Signup />} />
@@ -43,6 +45,7 @@ export default function App() {
           <Route path="settings" element={<ProtectedRoute requiredPermissions={['system_admin']}><Settings /></ProtectedRoute>} />
         </Route>
       </Routes>
+      </NotificationProvider>
     </AuthProvider>
   )
 }

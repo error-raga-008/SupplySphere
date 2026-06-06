@@ -252,7 +252,7 @@ class RecentInvoicesAPIView(APIView):
 class NotificationViewSet(viewsets.ModelViewSet):
 	serializer_class = NotificationSerializer
 	permission_classes = [IsAuthenticated]
-	http_method_names = ['get', 'patch', 'head', 'options']
+	http_method_names = ['get', 'patch', 'post', 'head', 'options']
 
 	def get_queryset(self):
 		user = self.request.user
@@ -292,3 +292,9 @@ class NotificationViewSet(viewsets.ModelViewSet):
 			request=request,
 		)
 		return Response(self.get_serializer(notification).data)
+
+	@action(detail=False, methods=['post'], url_path='mark-all-read')
+	def mark_all_read(self, request):
+		queryset = self.get_queryset().filter(is_read=False)
+		marked_count = queryset.update(is_read=True)
+		return Response({'marked_count': marked_count})
