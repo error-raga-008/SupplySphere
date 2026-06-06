@@ -37,12 +37,12 @@ export default function App() {
           <Route path="vendors" element={<ProtectedRoute requiredPermissions={['manage_vendors']}><Vendors /></ProtectedRoute>} />
           <Route path="rfqs" element={<ProtectedRoute requiredPermissions={['view_rfq']}><RFQs /></ProtectedRoute>} />
           <Route path="quotations" element={<ProtectedRoute requiredPermissions={['view_rfq', 'submit_quote']}><Quotations /></ProtectedRoute>} />
-          <Route path="approvals" element={<ProtectedRoute requiredPermissions={['approve_quote', 'approve_po']}><Approvals /></ProtectedRoute>} />
-          <Route path="purchase-orders" element={<ProtectedRoute requiredPermissions={['create_po', 'approve_po']}><PurchaseOrders /></ProtectedRoute>} />
-          <Route path="invoices" element={<ProtectedRoute requiredPermissions={['view_invoices']}><Invoices /></ProtectedRoute>} />
-          <Route path="activity-logs" element={<ProtectedRoute requiredPermissions={['manage_users', 'system_admin']}><ActivityLogs /></ProtectedRoute>} />
+          <Route path="approvals" element={<ProtectedRoute requiredPermissions={['view_dashboard']}><Approvals /></ProtectedRoute>} />
+          <Route path="purchase-orders" element={<ProtectedRoute requiredPermissions={['view_dashboard']}><PurchaseOrders /></ProtectedRoute>} />
+          <Route path="invoices" element={<ProtectedRoute requiredPermissions={['view_dashboard']}><Invoices /></ProtectedRoute>} />
+          <Route path="activity-logs" element={<ProtectedRoute requiredPermissions={['view_dashboard']}><ActivityLogs /></ProtectedRoute>} />
           <Route path="reports" element={<ProtectedRoute requiredPermissions={['view_dashboard']}><Reports /></ProtectedRoute>} />
-          <Route path="settings" element={<ProtectedRoute requiredPermissions={['system_admin']}><Settings /></ProtectedRoute>} />
+          <Route path="settings" element={<ProtectedRoute requiredPermissions={['view_dashboard']}><Settings /></ProtectedRoute>} />
         </Route>
       </Routes>
       </NotificationProvider>
