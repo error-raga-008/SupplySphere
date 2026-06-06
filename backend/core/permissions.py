@@ -150,6 +150,14 @@ class IsAdmin(HasRolePermission):
     required_permission = 'system_admin'
 
 
+class IsAdminOnly(BasePermission):
+    message = 'You do not have permission to perform this action.'
+
+    def has_permission(self, request, view):
+        user = getattr(request, 'user', None)
+        return bool(user and user.is_authenticated and getattr(getattr(user, 'role', None), 'name', None) == 'admin')
+
+
 class IsOwnerOrAdmin(BasePermission):
     message = 'You do not have permission to perform this action.'
 

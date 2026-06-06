@@ -8,12 +8,18 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.filters import OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
-from core.models import ApprovalWorkflow, Invoice, Notification, PasswordReset, PurchaseOrder, Quotation, RFQ, Role, User, Vendor
-from core.permissions import CanViewDashboard, IsOwnerOrAdmin
+from core.filters import ActivityLogFilter
+from core.models import ActivityLog, ApprovalWorkflow, Invoice, Notification, PasswordReset, PurchaseOrder, Quotation, RFQ, Role, User, Vendor
+from core.pagination import ActivityLogPagination
+from core.permissions import CanViewDashboard, IsAdminOnly, IsOwnerOrAdmin
 from core.serializers import (
 	AuthUserSerializer,
+	ActivityLogSerializer,
+	RecentActivityLogSerializer,
 	DashboardSummarySerializer,
 	ForgotPasswordSerializer,
 	LoginSerializer,
@@ -102,6 +108,7 @@ class ForgotPasswordAPIView(APIView):
 		serializer = ForgotPasswordSerializer(data=request.data)
 		serializer.is_valid(raise_exception=True)
 		user = User.objects.filter(email__iexact=serializer.validated_data['email']).first()
+		log_activity_user = user if user else None
 		if user:
 			token = generate_reset_token()
 			PasswordReset.objects.create(
@@ -110,6 +117,13 @@ class ForgotPasswordAPIView(APIView):
 				expires_at=timezone.now() + timedelta(days=1),
 				used=False,
 			)
+		create_activity_log(
+			user=log_activity_user,
+			action='auth.password_reset_request',
+			entity_type='user',
+			entity_id=user.id if user else serializer.validated_data['email'],
+			request=request,
+		)
 		return Response({'detail': 'If the email exists, a reset token has been generated.'})
 
 
@@ -160,6 +174,24 @@ class ProfileAPIView(APIView):
 			request=request,
 		)
 		return Response(build_auth_payload(request.user))
+
+
+class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
+	serializer_class = ActivityLogSerializer
+	permission_classes = [IsAdminOnly]
+	filter_backends = [DjangoFilterBackend, OrderingFilter]
+	filterset_class = ActivityLogFilter
+	ordering_fields = ['created_at']
+	ordering = ['-created_at']
+	pagination_class = ActivityLogPagination
+
+	def get_queryset(self):
+		return ActivityLog.objects.select_related('user', 'user__role').order_by('-created_at')
+
+	@action(detail=False, methods=['get'], url_path='recent')
+	def recent(self, request):
+		queryset = self.filter_queryset(self.get_queryset())[:20]
+		return Response(RecentActivityLogSerializer(queryset, many=True).data)
 
 
 class DashboardSummaryAPIView(APIView):

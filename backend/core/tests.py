@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.test import SimpleTestCase
 from rest_framework.exceptions import AuthenticationFailed, NotAuthenticated, PermissionDenied
@@ -6,6 +7,7 @@ from rest_framework.exceptions import AuthenticationFailed, NotAuthenticated, Pe
 from core.exceptions import custom_exception_handler
 from core.permissions import CanApprovePO, IsOwnerOrAdmin, get_role_permissions
 from core.services import build_auth_payload
+from core.services.activity_logger import log_activity
 
 
 class RBACPermissionTests(SimpleTestCase):
@@ -53,3 +55,35 @@ class RBACPermissionTests(SimpleTestCase):
 		self.assertEqual(permission_response.data['detail'], 'You do not have permission to perform this action.')
 		self.assertEqual(auth_response.data['detail'], 'Authentication required.')
 		self.assertEqual(invalid_response.data['detail'], 'Invalid credentials')
+
+	@patch('core.services.activity_logger.ActivityLog.objects.create')
+	def test_log_activity_extracts_ip_and_saves_fields(self, create_mock):
+		request = SimpleNamespace(META={'HTTP_X_FORWARDED_FOR': '192.168.1.10, 10.0.0.1'})
+
+		log_activity(
+			user=SimpleNamespace(id=5),
+			action='quotation.approved',
+			entity_type='quotation',
+			entity_id=12,
+			old_values={'status': 'pending'},
+			new_values={'status': 'approved'},
+			request=request,
+		)
+
+		create_mock.assert_called_once()
+		kwargs = create_mock.call_args.kwargs
+		self.assertEqual(kwargs['ip_address'], '192.168.1.10')
+		self.assertEqual(kwargs['action'], 'quotation.approved')
+		self.assertEqual(kwargs['entity_id'], '12')
+
+	@patch('core.services.activity_logger.ActivityLog.objects.create', side_effect=Exception('db unavailable'))
+	def test_log_activity_never_raises_when_persist_fails(self, create_mock):
+		result = log_activity(
+			user=None,
+			action='auth.login',
+			entity_type='user',
+			entity_id=1,
+			request=None,
+		)
+
+		self.assertIsNone(result)
