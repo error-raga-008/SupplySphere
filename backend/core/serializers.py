@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
 
 from core.models import ApprovalWorkflow, Invoice, Notification, PasswordReset, PurchaseOrder, Quotation, RFQ, Role, User
 
@@ -72,7 +73,7 @@ class LoginSerializer(serializers.Serializer):
         request = self.context.get('request')
         user = authenticate(request=request, email=attrs['email'], password=attrs['password'])
         if not user:
-            raise serializers.ValidationError('Invalid email or password.')
+            raise AuthenticationFailed('Invalid credentials')
         attrs['user'] = user
         return attrs
 
