@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
 from core.models import ApprovalWorkflow, Invoice, Notification, PasswordReset, PurchaseOrder, Quotation, RFQ, Role, User, Vendor
-from core.permissions import HasDashboardAccess, IsOwnerOrAdmin
+from core.permissions import CanViewDashboard, IsOwnerOrAdmin
 from core.serializers import (
 	AuthUserSerializer,
 	DashboardSummarySerializer,
@@ -92,11 +92,7 @@ class TokenRefreshAPIView(APIView):
 		new_refresh = data.get('refresh')
 		if new_refresh:
 			rotate_session_token(session, refresh_token, new_refresh)
-		return Response({
-			'access': data['access'],
-			'refresh': new_refresh or refresh_token,
-			**build_auth_payload(session, access=data['access'], refresh=new_refresh or refresh_token),
-		})
+		return Response(build_auth_payload(session, access=data['access'], refresh=new_refresh or refresh_token))
 
 
 class ForgotPasswordAPIView(APIView):
@@ -167,7 +163,7 @@ class ProfileAPIView(APIView):
 
 
 class DashboardSummaryAPIView(APIView):
-	permission_classes = [HasDashboardAccess]
+	permission_classes = [CanViewDashboard]
 
 	def get(self, request):
 		data = {
@@ -182,7 +178,7 @@ class DashboardSummaryAPIView(APIView):
 
 
 class RecentRFQsAPIView(APIView):
-	permission_classes = [HasDashboardAccess]
+	permission_classes = [CanViewDashboard]
 
 	def get(self, request):
 		queryset = RFQ.objects.select_related('created_by').order_by('-created_at')[:10]
@@ -190,7 +186,7 @@ class RecentRFQsAPIView(APIView):
 
 
 class RecentQuotationsAPIView(APIView):
-	permission_classes = [HasDashboardAccess]
+	permission_classes = [CanViewDashboard]
 
 	def get(self, request):
 		queryset = Quotation.objects.select_related('vendor').order_by('-created_at')[:10]
@@ -198,7 +194,7 @@ class RecentQuotationsAPIView(APIView):
 
 
 class PendingApprovalsAPIView(APIView):
-	permission_classes = [HasDashboardAccess]
+	permission_classes = [CanViewDashboard]
 
 	def get(self, request):
 		queryset = ApprovalWorkflow.objects.select_related('quotation').filter(status='pending').order_by('-initiated_at')[:10]
@@ -206,7 +202,7 @@ class PendingApprovalsAPIView(APIView):
 
 
 class RecentPurchaseOrdersAPIView(APIView):
-	permission_classes = [HasDashboardAccess]
+	permission_classes = [CanViewDashboard]
 
 	def get(self, request):
 		queryset = PurchaseOrder.objects.select_related('vendor').order_by('-created_at')[:10]
@@ -214,7 +210,7 @@ class RecentPurchaseOrdersAPIView(APIView):
 
 
 class RecentInvoicesAPIView(APIView):
-	permission_classes = [HasDashboardAccess]
+	permission_classes = [CanViewDashboard]
 
 	def get(self, request):
 		queryset = Invoice.objects.select_related('vendor').order_by('-created_at')[:10]
@@ -234,13 +230,33 @@ class NotificationViewSet(viewsets.ModelViewSet):
 		return queryset.filter(user=user)
 
 	def perform_update(self, serializer):
-		serializer.save()
+		old_values = NotificationSerializer(serializer.instance).data
+		notification = serializer.save()
+		create_activity_log(
+			user=self.request.user,
+			action='notification.update',
+			entity_type='notification',
+			entity_id=notification.id,
+			old_values=old_values,
+			new_values=NotificationSerializer(notification).data,
+			request=self.request,
+		)
 
 	@action(detail=True, methods=['patch'], url_path='read')
 	def read(self, request, pk=None):
 		notification = self.get_object()
 		if notification.user_id != request.user.id and getattr(request.user.role, 'name', None) != 'admin':
 			return Response({'detail': 'Not allowed.'}, status=status.HTTP_403_FORBIDDEN)
+		old_values = NotificationSerializer(notification).data
 		notification.is_read = True
 		notification.save(update_fields=['is_read'])
+		create_activity_log(
+			user=request.user,
+			action='notification.read',
+			entity_type='notification',
+			entity_id=notification.id,
+			old_values=old_values,
+			new_values=NotificationSerializer(notification).data,
+			request=request,
+		)
 		return Response(self.get_serializer(notification).data)

@@ -31,16 +31,16 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="vendors" element={<Vendors />} />
-          <Route path="rfqs" element={<RFQs />} />
-          <Route path="quotations" element={<Quotations />} />
-          <Route path="approvals" element={<Approvals />} />
-          <Route path="purchase-orders" element={<PurchaseOrders />} />
-          <Route path="invoices" element={<Invoices />} />
-          <Route path="activity-logs" element={<ActivityLogs />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="settings" element={<Settings />} />
+          <Route path="dashboard" element={<ProtectedRoute requiredPermissions={['view_dashboard']}><Dashboard /></ProtectedRoute>} />
+          <Route path="vendors" element={<ProtectedRoute requiredPermissions={['manage_vendors']}><Vendors /></ProtectedRoute>} />
+          <Route path="rfqs" element={<ProtectedRoute requiredPermissions={['view_rfq']}><RFQs /></ProtectedRoute>} />
+          <Route path="quotations" element={<ProtectedRoute requiredPermissions={['view_rfq', 'submit_quote']}><Quotations /></ProtectedRoute>} />
+          <Route path="approvals" element={<ProtectedRoute requiredPermissions={['approve_quote', 'approve_po']}><Approvals /></ProtectedRoute>} />
+          <Route path="purchase-orders" element={<ProtectedRoute requiredPermissions={['create_po', 'approve_po']}><PurchaseOrders /></ProtectedRoute>} />
+          <Route path="invoices" element={<ProtectedRoute requiredPermissions={['view_invoices']}><Invoices /></ProtectedRoute>} />
+          <Route path="activity-logs" element={<ProtectedRoute requiredPermissions={['manage_users', 'system_admin']}><ActivityLogs /></ProtectedRoute>} />
+          <Route path="reports" element={<ProtectedRoute requiredPermissions={['view_dashboard']}><Reports /></ProtectedRoute>} />
+          <Route path="settings" element={<ProtectedRoute requiredPermissions={['system_admin']}><Settings /></ProtectedRoute>} />
         </Route>
       </Routes>
     </AuthProvider>

@@ -30,7 +30,8 @@ def create_activity_log(*, user=None, action, entity_type='', entity_id='', old_
 
 
 def build_auth_payload(user, *, access=None, refresh=None):
-    from core.permissions import get_role_permissions
+    from core.permissions import get_user_permissions
+
     role_name = getattr(user.role, 'name', None) if getattr(user, 'role_id', None) else None
     payload = {
         'user': {
@@ -40,8 +41,7 @@ def build_auth_payload(user, *, access=None, refresh=None):
             'phone': user.phone,
             'role': role_name,
         },
-        'role': role_name,
-        'permissions': get_role_permissions(role_name),
+        'permissions': get_user_permissions(user),
     }
     if access is not None:
         payload['access'] = access
