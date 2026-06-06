@@ -5,11 +5,11 @@ import Navbar from '../components/Navbar'
 
 export default function DashboardLayout() {
   return (
-    <div className="min-h-screen flex">
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', fontFamily: 'var(--font)' }}>
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         <Navbar />
-        <main className="p-6 container">
+        <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' }}>
           <Outlet />
         </main>
       </div>

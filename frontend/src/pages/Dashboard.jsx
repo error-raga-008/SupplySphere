@@ -1,68 +1,98 @@
 import React from 'react'
+import {
+  FiFileText, FiClock, FiUsers, FiShoppingCart, FiDollarSign, FiTrendingUp,
+} from 'react-icons/fi'
 import Card from '../components/Card'
 import Table from '../components/Table'
 import { dashboardMock, recentRFQs, recentQuotations, recentPOs, recentInvoices } from '../utils/mockData'
 
-export default function Dashboard(){
-  const rfqCols = [
-    { header: 'RFQ Number', accessor: 'rfq_number' },
-    { header: 'Title', accessor: 'title' },
-    { header: 'Status', accessor: 'status' },
-  ]
+const CARD_META = [
+  { key: 'active_rfqs',           title: 'Active RFQs',        icon: FiFileText,    color: '#007dfc' },
+  { key: 'pending_approvals',     title: 'Pending Approvals',  icon: FiClock,       color: '#d97706' },
+  { key: 'total_vendors',         title: 'Total Vendors',      icon: FiUsers,       color: '#059669' },
+  { key: 'active_purchase_orders',title: 'Active POs',         icon: FiShoppingCart,color: '#7c3aed' },
+  { key: 'open_invoices',         title: 'Open Invoices',      icon: FiDollarSign,  color: '#0891b2' },
+  { key: 'monthly_spend',         title: 'Monthly Spend',      icon: FiTrendingUp,  color: '#dc2626',
+    format: v => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}` },
+]
 
-  const quoteCols = [
-    { header: 'Quote Number', accessor: 'quote_number' },
-    { header: 'Vendor', accessor: 'vendor' },
-    { header: 'Amount', accessor: 'total_amount' },
-  ]
+const rfqCols = [
+  { header: 'RFQ #',    accessor: 'rfq_number' },
+  { header: 'Title',    accessor: 'title' },
+  { header: 'Status',   accessor: 'status' },
+]
+const quoteCols = [
+  { header: 'Quote #',  accessor: 'quote_number' },
+  { header: 'Vendor',   accessor: 'vendor' },
+  { header: 'Amount',   accessor: 'total_amount' },
+  { header: 'Status',   accessor: 'status' },
+]
+const poCols = [
+  { header: 'PO #',     accessor: 'po_number' },
+  { header: 'Vendor',   accessor: 'vendor' },
+  { header: 'Amount',   accessor: 'total_amount' },
+]
+const invCols = [
+  { header: 'Invoice #',accessor: 'invoice_number' },
+  { header: 'Vendor',   accessor: 'vendor' },
+  { header: 'Amount Due',accessor: 'amount_due' },
+]
 
-  const poCols = [
-    { header: 'PO Number', accessor: 'po_number' },
-    { header: 'Vendor', accessor: 'vendor' },
-    { header: 'Amount', accessor: 'total_amount' },
-  ]
-
-  const invCols = [
-    { header: 'Invoice Number', accessor: 'invoice_number' },
-    { header: 'Vendor', accessor: 'vendor' },
-    { header: 'Amount Due', accessor: 'amount_due' },
-  ]
-
+function SectionHeader({ title }) {
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-4">
-        <Card title="Active RFQs" value={dashboardMock.active_rfqs} />
-        <Card title="Pending Approvals" value={dashboardMock.pending_approvals} />
-        <Card title="Total Vendors" value={dashboardMock.total_vendors} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+      <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-dark)', fontFamily: 'var(--font)' }}>
+        {title}
+      </h2>
+      <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+    </div>
+  )
+}
+
+export default function Dashboard() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32, fontFamily: 'var(--font)' }}>
+
+      {/* Stats Grid */}
+      <div>
+        <SectionHeader title="Overview" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+          {CARD_META.map(({ key, title, icon, color, format }) => (
+            <Card
+              key={key}
+              title={title}
+              value={format ? format(dashboardMock[key]) : dashboardMock[key]}
+              icon={icon}
+              color={color}
+            />
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card title="Active POs" value={dashboardMock.active_purchase_orders} />
-        <Card title="Open Invoices" value={dashboardMock.open_invoices} />
-        <Card title="Monthly Spend" value={`$${dashboardMock.monthly_spend}`} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
+      {/* Recent RFQs + Quotations */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <div>
-          <h3 className="mb-2 font-semibold">Recent RFQs</h3>
+          <SectionHeader title="Recent RFQs" />
           <Table columns={rfqCols} data={recentRFQs} />
         </div>
         <div>
-          <h3 className="mb-2 font-semibold">Recent Quotations</h3>
+          <SectionHeader title="Recent Quotations" />
           <Table columns={quoteCols} data={recentQuotations} />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* Recent POs + Invoices */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <div>
-          <h3 className="mb-2 font-semibold">Recent Purchase Orders</h3>
+          <SectionHeader title="Recent Purchase Orders" />
           <Table columns={poCols} data={recentPOs} />
         </div>
         <div>
-          <h3 className="mb-2 font-semibold">Recent Invoices</h3>
+          <SectionHeader title="Recent Invoices" />
           <Table columns={invCols} data={recentInvoices} />
         </div>
       </div>
+
     </div>
   )
 }
