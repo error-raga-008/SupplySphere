@@ -95,7 +95,7 @@ export default function Dashboard() {
               <h3 className="text-3xl font-bold text-[var(--primary)]">$42.8k</h3>
               <p className="text-sm text-[var(--text)] mt-1 font-medium">78% of target 🚀</p>
             </div>
-            <button className="mt-5 bg-[var(--primary)] bg-opacity-10 text-[var(--primary)] px-4 py-2 rounded-[var(--radius-md)] text-sm font-bold">
+            <button className="mt-5 bg-[var(--primary)] bg-opacity-10 text-white hover:bg-[blue] hover:cursor-pointer text-[var(--primary)] px-4 py-2 rounded-[var(--radius-md)] text-sm font-bold">
               View Sales
             </button>
           </div>
