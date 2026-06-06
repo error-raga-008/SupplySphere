@@ -11,74 +11,73 @@ export default function Button({
     alignItems: 'center',
     justifyContent: 'center',
     gap: '8px',
-    fontSize: '16px',
-    fontWeight: 500,
-    lineHeight: '24px',
-    padding: '12px 24px',
+    fontSize: '14px',
+    fontWeight: 600,
+    lineHeight: '20px',
+    padding: '10px 20px',
     borderRadius: 'var(--radius-md)',
     border: 'none',
     cursor: loading ? 'not-allowed' : 'pointer',
     opacity: loading ? 0.7 : 1,
-    transition: 'all var(--transition-sm)',
+    transition: 'background 0.14s, box-shadow 0.14s',
     fontFamily: 'var(--font)',
     width: '100%',
+    letterSpacing: '-0.1px',
     ...style,
   }
 
   const variants = {
     primary: {
-      background: 'var(--secondary)',
-      color: '#fff',
-    },
-    blue: {
       background: 'var(--primary)',
+      color: '#fff',
+      boxShadow: 'inset 0 0 0 1px rgba(9,30,66,0.12)',
+    },
+    secondary: {
+      background: 'var(--secondary)',
       color: '#fff',
     },
     outline: {
       background: 'transparent',
-      color: 'var(--secondary)',
+      color: 'var(--primary)',
+      border: '1px solid var(--primary)',
+    },
+    subtle: {
+      background: 'var(--bg)',
+      color: 'var(--text)',
       border: '1px solid var(--border)',
     },
+  }
+
+  const hoverBg = {
+    primary:   'var(--primary-hover)',
+    secondary: '#0E1F38',
+    outline:   'var(--primary-light)',
+    subtle:    '#EBECF0',
   }
 
   return (
     <button
       type="button"
-      style={{ ...base, ...variants[variant] }}
+      style={{ ...base, ...(variants[variant] || variants.primary) }}
       disabled={loading}
       className={className}
-      onMouseEnter={(event) => {
-        if (!loading) {
-          if (variant === 'primary') event.currentTarget.style.background = '#013d7a'
-          if (variant === 'blue') event.currentTarget.style.background = 'var(--primary-hover)'
-          if (variant === 'outline') event.currentTarget.style.background = 'var(--bg)'
-        }
-      }}
-      onMouseLeave={(event) => {
-        if (variant === 'primary') event.currentTarget.style.background = 'var(--secondary)'
-        if (variant === 'blue') event.currentTarget.style.background = 'var(--primary)'
-        if (variant === 'outline') event.currentTarget.style.background = 'transparent'
-      }}
+      onMouseEnter={e => { if (!loading) e.currentTarget.style.background = hoverBg[variant] || hoverBg.primary }}
+      onMouseLeave={e => { e.currentTarget.style.background = (variants[variant] || variants.primary).background }}
       {...props}
     >
       {loading ? (
         <>
-          <span
-            style={{
-              width: 16,
-              height: 16,
-              border: '2px solid rgba(255,255,255,0.3)',
-              borderTopColor: '#fff',
-              borderRadius: '50%',
-              animation: 'spin 0.7s linear infinite',
-              display: 'inline-block',
-            }}
-          />
-          Loading...
+          <span style={{
+            width: 14, height: 14,
+            border: '2px solid rgba(255,255,255,0.35)',
+            borderTopColor: '#fff',
+            borderRadius: '50%',
+            animation: 'spin 0.7s linear infinite',
+            display: 'inline-block',
+          }} />
+          Loading…
         </>
-      ) : (
-        children
-      )}
+      ) : children}
     </button>
   )
 }

@@ -1,62 +1,71 @@
 import React from 'react'
 
-const STATUS_COLORS = {
-  published:    { bg: 'rgba(0,125,252,0.08)',   color: '#007dfc' },
-  draft:        { bg: 'rgba(156,163,175,0.15)',  color: '#6b7280' },
-  submitted:    { bg: 'rgba(16,185,129,0.1)',    color: '#059669' },
-  accepted:     { bg: 'rgba(16,185,129,0.1)',    color: '#059669' },
-  approved:     { bg: 'rgba(16,185,129,0.1)',    color: '#059669' },
-  rejected:     { bg: 'rgba(239,68,68,0.1)',     color: '#dc2626' },
-  cancelled:    { bg: 'rgba(239,68,68,0.1)',     color: '#dc2626' },
-  pending:      { bg: 'rgba(245,158,11,0.1)',    color: '#d97706' },
-  issued:       { bg: 'rgba(0,125,252,0.08)',    color: '#007dfc' },
-  paid:         { bg: 'rgba(16,185,129,0.1)',    color: '#059669' },
-  overdue:      { bg: 'rgba(239,68,68,0.1)',     color: '#dc2626' },
-  closed:       { bg: 'rgba(156,163,175,0.15)',  color: '#6b7280' },
-  revised:      { bg: 'rgba(139,92,246,0.1)',    color: '#7c3aed' },
-  acknowledged: { bg: 'rgba(0,125,252,0.08)',    color: '#007dfc' },
-  completed:    { bg: 'rgba(16,185,129,0.1)',    color: '#059669' },
+// Atlassian "lozenge" color map
+const LOZENGE = {
+  published:    { bg: '#DEEBFF', color: '#0747A6' },
+  draft:        { bg: '#F4F5F7', color: '#42526E' },
+  submitted:    { bg: '#E3FCEF', color: '#006644' },
+  accepted:     { bg: '#E3FCEF', color: '#006644' },
+  approved:     { bg: '#E3FCEF', color: '#006644' },
+  rejected:     { bg: '#FFEBE6', color: '#BF2600' },
+  cancelled:    { bg: '#FFEBE6', color: '#BF2600' },
+  pending:      { bg: '#FFFAE6', color: '#974F0C' },
+  issued:       { bg: '#DEEBFF', color: '#0747A6' },
+  paid:         { bg: '#E3FCEF', color: '#006644' },
+  overdue:      { bg: '#FFEBE6', color: '#BF2600' },
+  closed:       { bg: '#F4F5F7', color: '#42526E' },
+  revised:      { bg: '#EAE6FF', color: '#403294' },
+  acknowledged: { bg: '#DEEBFF', color: '#0747A6' },
+  completed:    { bg: '#E3FCEF', color: '#006644' },
+  active:       { bg: '#E3FCEF', color: '#006644' },
+  inactive:     { bg: '#F4F5F7', color: '#42526E' },
 }
 
-function StatusBadge({ value }) {
-  const s = STATUS_COLORS[value?.toLowerCase()] || { bg: 'rgba(156,163,175,0.15)', color: '#6b7280' }
+function Lozenge({ value }) {
+  const s = LOZENGE[value?.toLowerCase()] || { bg: '#F4F5F7', color: '#42526E' }
   return (
     <span style={{
-      display: 'inline-block',
-      padding: '3px 10px',
-      borderRadius: 100,
-      fontSize: 12,
-      fontWeight: 600,
-      letterSpacing: '0.02em',
-      textTransform: 'capitalize',
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '2px 8px',
+      borderRadius: 3,
+      fontSize: 11,
+      fontWeight: 700,
+      letterSpacing: '0.04em',
+      textTransform: 'uppercase',
       background: s.bg,
       color: s.color,
+      lineHeight: '18px',
+      whiteSpace: 'nowrap',
     }}>
       {value}
     </span>
   )
 }
 
-export default function Table({ columns = [], data = [] }) {
+export default function Table({ columns = [], data = [], onRowClick }) {
   return (
     <div style={{
       background: 'var(--bg-white)',
       borderRadius: 'var(--radius-lg)',
       border: '1px solid var(--border)',
       overflow: 'hidden',
-      fontFamily: 'var(--font)',
+      boxShadow: 'var(--shadow-sm)',
     }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ background: 'var(--secondary)' }}>
+          <tr style={{
+            background: 'var(--bg-subtle)',
+            borderBottom: '2px solid var(--border)',
+          }}>
             {columns.map(col => (
               <th key={col.accessor} style={{
-                padding: '11px 16px',
+                padding: '10px 16px',
                 textAlign: 'left',
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'rgba(255,255,255,0.7)',
-                letterSpacing: '0.05em',
+                fontSize: 11,
+                fontWeight: 700,
+                color: 'var(--text-muted)',
+                letterSpacing: '0.06em',
                 textTransform: 'uppercase',
                 whiteSpace: 'nowrap',
               }}>
@@ -68,24 +77,38 @@ export default function Table({ columns = [], data = [] }) {
         <tbody>
           {data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--muted)', fontSize: 14 }}>
+              <td colSpan={columns.length} style={{
+                padding: '36px 16px',
+                textAlign: 'center',
+                color: 'var(--text-muted)',
+                fontSize: 13.5,
+              }}>
                 No records found
               </td>
             </tr>
           ) : (
             data.map((row, idx) => (
-              <tr key={idx} style={{
-                borderTop: '1px solid var(--border)',
-                transition: 'background 0.12s',
-              }}
+              <tr
+                key={idx}
+                onClick={() => onRowClick?.(row)}
+                style={{
+                  borderTop: '1px solid var(--border-light)',
+                  cursor: onRowClick ? 'pointer' : 'default',
+                  transition: 'background 0.1s',
+                }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onMouseLeave={e => e.currentTarget.style.background = ''}
               >
                 {columns.map(col => (
-                  <td key={col.accessor} style={{ padding: '11px 16px', fontSize: 13.5, color: 'var(--text)' }}>
+                  <td key={col.accessor} style={{
+                    padding: '11px 16px',
+                    fontSize: 13.5,
+                    color: 'var(--text-dark)',
+                    lineHeight: '1.4',
+                  }}>
                     {col.accessor === 'status'
-                      ? <StatusBadge value={row[col.accessor]} />
-                      : row[col.accessor] ?? '—'}
+                      ? <Lozenge value={row[col.accessor]} />
+                      : (row[col.accessor] ?? '—')}
                   </td>
                 ))}
               </tr>

@@ -28,6 +28,8 @@ api.interceptors.response.use(
           )
           localStorage.setItem('ss_access', data.access)
           if (data.refresh) localStorage.setItem('ss_refresh', data.refresh)
+          if (data.user) localStorage.setItem('ss_user', JSON.stringify(data.user))
+          if (data.permissions) localStorage.setItem('ss_permissions', JSON.stringify(data.permissions))
           api.defaults.headers.common['Authorization'] = `Bearer ${data.access}`
           originalRequest.headers['Authorization'] = `Bearer ${data.access}`
           return api(originalRequest)
@@ -35,6 +37,7 @@ api.interceptors.response.use(
           localStorage.removeItem('ss_access')
           localStorage.removeItem('ss_refresh')
           localStorage.removeItem('ss_user')
+          localStorage.removeItem('ss_permissions')
           delete api.defaults.headers.common['Authorization']
           window.location.href = '/login'
         }

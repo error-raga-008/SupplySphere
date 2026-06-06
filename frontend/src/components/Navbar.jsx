@@ -1,29 +1,39 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { FiBell, FiLogOut } from 'react-icons/fi'
+import { FiBell, FiLogOut, FiChevronDown } from 'react-icons/fi'
 import useAuth from '../hooks/useAuth'
 
-const PAGE_TITLES = {
-  '/dashboard':       'Dashboard',
-  '/vendors':         'Vendor Management',
-  '/rfqs':            'Request for Quotations',
-  '/quotations':      'Quotations',
-  '/approvals':       'Approval Workflow',
-  '/purchase-orders': 'Purchase Orders',
-  '/invoices':        'Invoices',
-  '/activity-logs':   'Activity Logs',
-  '/reports':         'Reports & Analytics',
-  '/settings':        'Settings',
+const PAGE_META = {
+  '/dashboard':       { title: 'Dashboard',              sub: 'Overview of your procurement activity' },
+  '/vendors':         { title: 'Vendor Management',      sub: 'Manage and track your vendor network' },
+  '/rfqs':            { title: 'Request for Quotations', sub: 'Create and manage procurement RFQs' },
+  '/quotations':      { title: 'Quotations',             sub: 'Review vendor quotation submissions' },
+  '/approvals':       { title: 'Approval Workflow',      sub: 'Pending and completed approval requests' },
+  '/purchase-orders': { title: 'Purchase Orders',        sub: 'Track issued and active purchase orders' },
+  '/invoices':        { title: 'Invoices',               sub: 'Manage vendor invoices and payments' },
+  '/activity-logs':   { title: 'Activity Logs',          sub: 'Full audit trail of system actions' },
+  '/reports':         { title: 'Reports & Analytics',    sub: 'Procurement insights and summaries' },
+  '/settings':        { title: 'Settings',               sub: 'Account and system preferences' },
 }
 
 export default function Navbar() {
   const { user, logout } = useAuth()
   const { pathname } = useLocation()
-  const title = PAGE_TITLES[pathname] || 'SupplySphere'
+  const meta = PAGE_META[pathname] || { title: 'SupplySphere', sub: '' }
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  async function handleLogout() {
+    setLoggingOut(true)
+    try { await logout() } catch {}
+  }
+
+  const initials = user?.name
+    ? user.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    : '?'
 
   return (
     <header style={{
-      height: 62,
+      height: 58,
       background: 'var(--bg-white)',
       borderBottom: '1px solid var(--border)',
       display: 'flex',
@@ -33,66 +43,93 @@ export default function Navbar() {
       position: 'sticky',
       top: 0,
       zIndex: 10,
-      fontFamily: 'var(--font)',
+      boxShadow: '0 1px 0 var(--border)',
+      flexShrink: 0,
     }}>
-      <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: 'var(--text-dark)', letterSpacing: '-0.2px' }}>
-        {title}
-      </h1>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* Page title */}
+      <div>
+        <h1 style={{
+          margin: 0, fontSize: 15.5, fontWeight: 600,
+          color: 'var(--text-dark)', letterSpacing: '-0.2px', lineHeight: 1.2,
+        }}>
+          {meta.title}
+        </h1>
+        {meta.sub && (
+          <p style={{ margin: 0, fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.3 }}>
+            {meta.sub}
+          </p>
+        )}
+      </div>
+
+      {/* Right side controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+
         {/* Bell */}
-        <button style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          color: 'var(--text)', padding: '7px 8px', borderRadius: 8,
-          display: 'flex', alignItems: 'center',
-          transition: 'background 0.15s',
-        }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'none'}
+        <button
+          title="Notifications"
+          style={{
+            width: 34, height: 34,
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--text-muted)',
+            borderRadius: 'var(--radius-md)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'background 0.14s, color 0.14s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.color = 'var(--text-dark)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-muted)' }}
         >
-          <FiBell size={18} />
+          <FiBell size={17} />
         </button>
 
-        <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 4px' }} />
+        {/* Divider */}
+        <div style={{ width: 1, height: 22, background: 'var(--border)', margin: '0 6px' }} />
 
-        {/* User */}
+        {/* User chip */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{
-            width: 34, height: 34, borderRadius: '50%',
+            width: 30, height: 30,
+            borderRadius: '50%',
             background: 'var(--primary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontWeight: 700, fontSize: 14,
+            color: '#fff', fontWeight: 700, fontSize: 12,
+            flexShrink: 0,
           }}>
-            {user?.name?.[0]?.toUpperCase() || 'U'}
+            {initials}
           </div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dark)', lineHeight: '1.2' }}>
+          <div style={{ lineHeight: 1.2 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dark)' }}>
               {user?.name}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'capitalize' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
               {user?.role?.replace(/_/g, ' ')}
             </div>
           </div>
         </div>
 
-        <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 4px' }} />
+        {/* Divider */}
+        <div style={{ width: 1, height: 22, background: 'var(--border)', margin: '0 6px' }} />
 
         {/* Logout */}
         <button
-          onClick={logout}
+          onClick={handleLogout}
+          disabled={loggingOut}
           style={{
-            display: 'flex', alignItems: 'center', gap: 6,
+            display: 'flex', alignItems: 'center', gap: 5,
             background: 'none', border: 'none', cursor: 'pointer',
-            color: '#ef4444', fontSize: 13, fontWeight: 500,
-            padding: '7px 10px', borderRadius: 8,
-            transition: 'background 0.15s',
+            color: 'var(--danger)',
+            fontSize: 13, fontWeight: 500,
+            padding: '6px 10px',
+            borderRadius: 'var(--radius-md)',
+            transition: 'background 0.14s',
             fontFamily: 'var(--font)',
+            opacity: loggingOut ? 0.6 : 1,
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.06)'}
+          onMouseEnter={e => e.currentTarget.style.background = '#FFEBE6'}
           onMouseLeave={e => e.currentTarget.style.background = 'none'}
         >
-          <FiLogOut size={15} />
-          Logout
+          <FiLogOut size={14} />
+          {loggingOut ? 'Signing out…' : 'Sign out'}
         </button>
       </div>
     </header>

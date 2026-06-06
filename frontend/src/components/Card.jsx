@@ -1,37 +1,84 @@
 import React from 'react'
 
-export default function Card({ title, value, icon: Icon, color = 'var(--primary)', sub }) {
+// Map icon color → Atlassian lozenge palette
+const COLOR_MAP = {
+  '#0052CC': { bg: '#DEEBFF', fg: '#0052CC' },
+  '#0747A6': { bg: '#DEEBFF', fg: '#0747A6' },
+  '#974F0C': { bg: '#FFFAE6', fg: '#974F0C' },
+  '#00875A': { bg: '#E3FCEF', fg: '#00875A' },
+  '#006644': { bg: '#E3FCEF', fg: '#006644' },
+  '#403294': { bg: '#EAE6FF', fg: '#403294' },
+  '#008DA6': { bg: '#E6FCFF', fg: '#008DA6' },
+  '#BF2600': { bg: '#FFEBE6', fg: '#BF2600' },
+  '#DE350B': { bg: '#FFEBE6', fg: '#DE350B' },
+}
+
+export default function Card({ title, value, icon: Icon, color = '#0052CC', sub, trend }) {
+  const palette = COLOR_MAP[color] || { bg: '#DEEBFF', fg: color }
+
   return (
     <div style={{
       background: 'var(--bg-white)',
       borderRadius: 'var(--radius-lg)',
       border: '1px solid var(--border)',
-      padding: '20px 22px',
+      padding: '20px 20px 18px',
       display: 'flex',
       flexDirection: 'column',
       gap: 14,
-      boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-      fontFamily: 'var(--font)',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.4 }}>{title}</span>
+      boxShadow: 'var(--shadow-sm)',
+      transition: 'box-shadow 0.18s, border-color 0.18s',
+    }}
+      onMouseEnter={e => {
+        e.currentTarget.style.boxShadow = 'var(--shadow-md)'
+        e.currentTarget.style.borderColor = '#C1C7D0'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.boxShadow = 'var(--shadow-sm)'
+        e.currentTarget.style.borderColor = 'var(--border)'
+      }}
+    >
+      {/* Title row */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: 'var(--text-muted)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          lineHeight: '1.4',
+        }}>
+          {title}
+        </span>
         {Icon && (
           <div style={{
-            width: 38, height: 38, borderRadius: 10,
-            background: `color-mix(in srgb, ${color} 12%, transparent)`,
+            width: 34, height: 34,
+            borderRadius: 'var(--radius-md)',
+            background: palette.bg,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color,
+            color: palette.fg,
             flexShrink: 0,
           }}>
-            <Icon size={18} />
+            <Icon size={16} />
           </div>
         )}
       </div>
+
+      {/* Value */}
       <div>
-        <div style={{ fontSize: 30, fontWeight: 700, color: 'var(--text-dark)', lineHeight: 1, letterSpacing: '-0.5px' }}>
+        <div style={{
+          fontSize: 30,
+          fontWeight: 700,
+          color: 'var(--text-dark)',
+          lineHeight: 1,
+          letterSpacing: '-0.5px',
+        }}>
           {value}
         </div>
-        {sub && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{sub}</div>}
+        {sub && (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>
+            {sub}
+          </div>
+        )}
       </div>
     </div>
   )
