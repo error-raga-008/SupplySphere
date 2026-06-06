@@ -43,35 +43,42 @@ export default function Button({
 
   return (
     <button
+      type="button"
       style={{ ...base, ...variants[variant] }}
       disabled={loading}
-      onMouseEnter={e => {
+      className={className}
+      onMouseEnter={(event) => {
         if (!loading) {
-          if (variant === 'primary') e.currentTarget.style.background = '#013d7a'
-          if (variant === 'blue') e.currentTarget.style.background = 'var(--primary-hover)'
-          if (variant === 'outline') e.currentTarget.style.background = 'var(--bg)'
+          if (variant === 'primary') event.currentTarget.style.background = '#013d7a'
+          if (variant === 'blue') event.currentTarget.style.background = 'var(--primary-hover)'
+          if (variant === 'outline') event.currentTarget.style.background = 'var(--bg)'
         }
       }}
-      onMouseLeave={e => {
-        if (variant === 'primary') e.currentTarget.style.background = 'var(--secondary)'
-        if (variant === 'blue') e.currentTarget.style.background = 'var(--primary)'
-        if (variant === 'outline') e.currentTarget.style.background = 'transparent'
+      onMouseLeave={(event) => {
+        if (variant === 'primary') event.currentTarget.style.background = 'var(--secondary)'
+        if (variant === 'blue') event.currentTarget.style.background = 'var(--primary)'
+        if (variant === 'outline') event.currentTarget.style.background = 'transparent'
       }}
       {...props}
     >
       {loading ? (
         <>
-          <span style={{
-            width: 16, height: 16,
-            border: '2px solid rgba(255,255,255,0.3)',
-            borderTopColor: '#fff',
-            borderRadius: '50%',
-            animation: 'spin 0.7s linear infinite',
-            display: 'inline-block',
-          }} />
+          <span
+            style={{
+              width: 16,
+              height: 16,
+              border: '2px solid rgba(255,255,255,0.3)',
+              borderTopColor: '#fff',
+              borderRadius: '50%',
+              animation: 'spin 0.7s linear infinite',
+              display: 'inline-block',
+            }}
+          />
           Loading...
         </>
-      ) : children}
+      ) : (
+        children
+      )}
     </button>
   )
 }

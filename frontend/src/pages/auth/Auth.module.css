@@ -1,11 +1,11 @@
-/* ── Auth layout ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&display=swap');
+
 .page {
   display: flex;
   min-height: 100vh;
   background: var(--bg);
 }
 
-/* ── Left brand panel ── */
 .brand {
   width: 420px;
   flex-shrink: 0;
@@ -21,8 +21,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 60% 50% at 30% 30%, rgba(0,125,252,0.25) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 80% 80%, rgba(201,243,29,0.1) 0%, transparent 70%);
+    radial-gradient(ellipse 60% 50% at 30% 30%, rgba(0, 125, 252, 0.25) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 80% 80%, rgba(201, 243, 29, 0.1) 0%, transparent 70%);
 }
 
 .brand::after {
@@ -33,7 +33,7 @@
   width: 320px;
   height: 320px;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .brandInner {
@@ -84,9 +84,9 @@
   flex-direction: column;
   gap: 20px;
   padding: 24px;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .stat {
@@ -106,7 +106,6 @@
   color: var(--muted);
 }
 
-/* Feature list (register) */
 .featureList {
   display: flex;
   flex-direction: column;
@@ -129,7 +128,6 @@
   flex-shrink: 0;
 }
 
-/* ── Right form panel ── */
 .formPanel {
   flex: 1;
   display: flex;
@@ -196,21 +194,19 @@
   color: var(--primary-hover);
 }
 
-/* Error banner */
 .errorBanner {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  background: rgba(239,68,68,0.08);
-  border: 1px solid rgba(239,68,68,0.2);
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: var(--radius-sm);
   color: #dc2626;
   font-size: 14px;
   margin-bottom: 8px;
 }
 
-/* Switch text */
 .switchText {
   text-align: center;
   font-size: 14px;
@@ -228,7 +224,6 @@
   color: var(--primary-hover);
 }
 
-/* Role grid */
 .roleGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -251,6 +246,16 @@
 
 .roleCard:hover {
   border-color: var(--primary);
+}
+
+.sectionLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
 }
 
 .roleLabel {
@@ -281,7 +286,6 @@
   justify-content: center;
 }
 
-/* Success / centered */
 .successCard {
   display: flex;
   flex-direction: column;
@@ -308,24 +312,41 @@
   text-align: center;
 }
 
-/* Spin animation for button loader */
 @keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── Responsive ── */
-@media (max-width: 767px) {
-  .brand { display: none; }
-
-  .formCard { padding: 28px 20px; }
-
-  .row2 { grid-template-columns: 1fr; }
-
-  .roleGrid { grid-template-columns: 1fr; }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 991px) {
-  .brand { width: 340px; }
-  .brandHeading { font-size: 32px; line-height: 42px; }
-  .brandInner { padding: 40px 32px; }
+  .brand {
+    width: 340px;
+  }
+
+  .brandHeading {
+    font-size: 32px;
+    line-height: 42px;
+  }
+
+  .brandInner {
+    padding: 40px 32px;
+  }
+}
+
+@media (max-width: 767px) {
+  .brand {
+    display: none;
+  }
+
+  .formCard {
+    padding: 28px 20px;
+  }
+
+  .row2 {
+    grid-template-columns: 1fr;
+  }
+
+  .roleGrid {
+    grid-template-columns: 1fr;
+  }
 }

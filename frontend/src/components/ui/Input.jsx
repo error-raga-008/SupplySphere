@@ -1,39 +1,40 @@
 import { forwardRef, useState } from 'react'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
 
-const Input = forwardRef(function Input(
-  { label, type = 'text', error, icon: Icon, className = '', ...props },
-  ref
-) {
-  const [showPass, setShowPass] = useState(false)
+const Input = forwardRef(function Input({ label, type = 'text', error, icon: Icon, className = '', ...props }, ref) {
+  const [showPassword, setShowPassword] = useState(false)
   const isPassword = type === 'password'
-  const inputType = isPassword ? (showPass ? 'text' : 'password') : type
+  const inputType = isPassword ? (showPassword ? 'text' : 'password') : type
 
   return (
-    <div className="input-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div className={className} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       {label && (
-        <label style={{
-          fontSize: '12px',
-          fontWeight: 600,
-          lineHeight: '18px',
-          color: 'var(--secondary)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-        }}>
+        <label
+          style={{
+            fontSize: '12px',
+            fontWeight: 600,
+            lineHeight: '18px',
+            color: 'var(--secondary)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+          }}
+        >
           {label}
         </label>
       )}
 
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
         {Icon && (
-          <span style={{
-            position: 'absolute',
-            left: '14px',
-            color: 'var(--muted)',
-            display: 'flex',
-            alignItems: 'center',
-            pointerEvents: 'none',
-          }}>
+          <span
+            style={{
+              position: 'absolute',
+              left: '14px',
+              color: 'var(--muted)',
+              display: 'flex',
+              alignItems: 'center',
+              pointerEvents: 'none',
+            }}
+          >
             <Icon size={16} />
           </span>
         )}
@@ -55,13 +56,13 @@ const Input = forwardRef(function Input(
             transition: 'border-color var(--transition-sm), box-shadow var(--transition-sm)',
             fontFamily: 'var(--font)',
           }}
-          onFocus={e => {
-            e.target.style.borderColor = 'var(--primary)'
-            e.target.style.boxShadow = 'var(--shadow-blue)'
+          onFocus={(event) => {
+            event.currentTarget.style.borderColor = 'var(--primary)'
+            event.currentTarget.style.boxShadow = 'var(--shadow-blue)'
           }}
-          onBlur={e => {
-            e.target.style.borderColor = error ? '#ef4444' : 'var(--border)'
-            e.target.style.boxShadow = 'none'
+          onBlur={(event) => {
+            event.currentTarget.style.borderColor = error ? '#ef4444' : 'var(--border)'
+            event.currentTarget.style.boxShadow = 'none'
           }}
           {...props}
         />
@@ -69,7 +70,7 @@ const Input = forwardRef(function Input(
         {isPassword && (
           <button
             type="button"
-            onClick={() => setShowPass(v => !v)}
+            onClick={() => setShowPassword((value) => !value)}
             style={{
               position: 'absolute',
               right: '14px',
@@ -82,16 +83,12 @@ const Input = forwardRef(function Input(
               padding: 0,
             }}
           >
-            {showPass ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+            {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
           </button>
         )}
       </div>
 
-      {error && (
-        <span style={{ fontSize: '12px', color: '#ef4444', lineHeight: '16px' }}>
-          {error}
-        </span>
-      )}
+      {error && <span style={{ fontSize: '12px', color: '#ef4444', lineHeight: '16px' }}>{error}</span>}
     </div>
   )
 })
