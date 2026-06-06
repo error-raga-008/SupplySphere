@@ -1,3 +1,9 @@
 import api from './api'
-export const listInvoices = () => api.get('/invoices/')
-export default { listInvoices }
+
+export const listInvoices = (params = {}) => api.get('/invoices/', { params })
+export const getInvoice = (id) => api.get(`/invoices/${id}/`)
+export const createInvoice = (data) => api.post('/invoices/', data)
+export const markInvoiceSent = (id) => api.patch(`/invoices/${id}/mark-sent/`)
+export const markInvoicePaid = (id) => api.patch(`/invoices/${id}/mark-paid/`)
+
+export default { listInvoices, getInvoice, createInvoice, markInvoiceSent, markInvoicePaid }

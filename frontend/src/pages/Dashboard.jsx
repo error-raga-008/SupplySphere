@@ -1,22 +1,20 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   FiFileText, FiClock, FiAlertTriangle, FiShoppingCart,
   FiPlus, FiUsers, FiEye,
 } from 'react-icons/fi'
 import {
-  ResponsiveContainer,
-  AreaChart, Area,
-  BarChart, Bar,
-  XAxis, YAxis, Tooltip,
-  CartesianGrid,
-  PieChart, Pie, Cell, Legend,
+  ResponsiveContainer, AreaChart, Area,
+  XAxis, YAxis, Tooltip, CartesianGrid,
+  PieChart, Pie, Cell,
 } from 'recharts'
 import Card from '../components/Card'
 import useAuth from '../hooks/useAuth'
-import { dashboardMock, recentPOs } from '../utils/mockData'
+import api from '../services/api'
+import { dashboardMock } from '../utils/mockData'
 
-// ── Mock chart data ───────────────────────────────────────────────────────
+// ── Chart data ────────────────────────────────────────────────────────────
 
 const MONTHLY_SPEND = [
   { month: 'Jan', spend: 85000 },
@@ -34,257 +32,133 @@ const CATEGORY_SPEND = [
   { name: 'Others',       value: 17, color: '#5E6C84' },
 ]
 
-// ── Stat cards config ─────────────────────────────────────────────────────
-
-const CARDS = [
-  {
-    key: 'active_rfqs',
-    title: 'Active RFQs',
-    icon: FiFileText,
-    color: '#0052CC',
-  },
-  {
-    key: 'pending_approvals',
-    title: 'Pending Approvals',
-    icon: FiClock,
-    color: '#974F0C',
-  },
-  {
-    key: 'monthly_spend',
-    title: "PO's This Month",
-    icon: FiShoppingCart,
-    color: '#00875A',
-    format: v => `₹${(Number(v) / 100000).toFixed(1)}L`,
-  },
-  {
-    key: 'open_invoices',
-    title: 'Overdue Invoices',
-    icon: FiAlertTriangle,
-    color: '#BF2600',
-  },
+const FALLBACK_POS = [
+  { id: 1, po_number: 'PO-001', vendor_name: 'Infra Supplies',   total_amount: 87000,  status: 'approved' },
+  { id: 2, po_number: 'PO-002', vendor_name: 'Tech Core',        total_amount: 140000, status: 'pending' },
+  { id: 3, po_number: 'PO-003', vendor_name: 'OfficeZone Co.',   total_amount: 34900,  status: 'draft' },
+  { id: 4, po_number: 'PO-004', vendor_name: 'CloudNet',         total_amount: 98500,  status: 'issued' },
+  { id: 5, po_number: 'PO-005', vendor_name: 'FastLog',          total_amount: 22000,  status: 'approved' },
 ]
 
-// ── PO table status badge ─────────────────────────────────────────────────
+const CARDS = [
+  { key: 'active_rfqs',       title: 'Active RFQs',       icon: FiFileText,     color: '#0052CC' },
+  { key: 'pending_approvals', title: 'Pending Approvals', icon: FiClock,        color: '#974F0C' },
+  { key: 'monthly_spend',     title: "PO's This Month",   icon: FiShoppingCart, color: '#00875A', format: v => `₹${(Number(v) / 100000).toFixed(1)}L` },
+  { key: 'open_invoices',     title: 'Overdue Invoices',  icon: FiAlertTriangle,color: '#BF2600' },
+]
 
 const PO_STATUS = {
-  approved:    { bg: '#E3FCEF', color: '#006644' },
-  pending:     { bg: '#FFFAE6', color: '#974F0C' },
-  draft:       { bg: '#F4F5F7', color: '#42526E' },
-  issued:      { bg: '#DEEBFF', color: '#0747A6' },
-  cancelled:   { bg: '#FFEBE6', color: '#BF2600' },
+  approved:     { bg: '#E3FCEF', color: '#006644' },
+  pending:      { bg: '#FFFAE6', color: '#974F0C' },
+  draft:        { bg: '#F4F5F7', color: '#42526E' },
+  issued:       { bg: '#DEEBFF', color: '#0747A6' },
+  acknowledged: { bg: '#EAE6FF', color: '#403294' },
+  completed:    { bg: '#E3FCEF', color: '#006644' },
+  cancelled:    { bg: '#FFEBE6', color: '#BF2600' },
 }
 
 function POStatus({ value }) {
   const s = PO_STATUS[value?.toLowerCase()] || PO_STATUS.draft
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center',
-      padding: '2px 8px', borderRadius: 3,
-      fontSize: 11, fontWeight: 700,
-      letterSpacing: '0.04em', textTransform: 'uppercase',
-      background: s.bg, color: s.color,
-    }}>
-      {value}
-    </span>
-  )
+  return <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 3, fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', background: s.bg, color: s.color }}>{value}</span>
 }
-
-// ── Custom tooltip ────────────────────────────────────────────────────────
 
 function SpendTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{
-      background: 'var(--bg-white)',
-      border: '1px solid var(--border)',
-      borderRadius: 6, padding: '8px 12px',
-      boxShadow: 'var(--shadow-md)',
-      fontSize: 12,
-    }}>
+    <div style={{ background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', boxShadow: 'var(--shadow-md)', fontSize: 12 }}>
       <div style={{ fontWeight: 600, color: 'var(--text-dark)', marginBottom: 3 }}>{label}</div>
-      <div style={{ color: 'var(--primary)' }}>
-        ₹{Number(payload[0].value).toLocaleString('en-IN')}
-      </div>
+      <div style={{ color: 'var(--primary)' }}>₹{Number(payload[0].value).toLocaleString('en-IN')}</div>
     </div>
   )
 }
 
-// ── Quick action button ───────────────────────────────────────────────────
-
 function QuickBtn({ icon: Icon, label, onClick, variant = 'outline' }) {
   const isPrimary = variant === 'primary'
   return (
-    <button
-      onClick={onClick}
-      style={{
-        flex: 1,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-        padding: '11px 16px',
-        border: isPrimary ? 'none' : '1.5px solid var(--border)',
-        borderRadius: 'var(--radius-md)',
-        background: isPrimary ? 'var(--primary)' : 'var(--bg-white)',
-        color: isPrimary ? '#fff' : 'var(--text-dark)',
-        fontSize: 13, fontWeight: 600,
-        cursor: 'pointer', fontFamily: 'var(--font)',
-        transition: 'all 0.14s',
-        boxShadow: isPrimary ? 'var(--shadow-sm)' : 'none',
-      }}
-      onMouseEnter={e => {
-        if (isPrimary) e.currentTarget.style.background = 'var(--primary-hover)'
-        else { e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }
-      }}
-      onMouseLeave={e => {
-        if (isPrimary) e.currentTarget.style.background = 'var(--primary)'
-        else { e.currentTarget.style.background = 'var(--bg-white)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-dark)' }
-      }}
+    <button onClick={onClick} style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 16px', border: isPrimary ? 'none' : '1.5px solid var(--border)', borderRadius: 'var(--radius-md)', background: isPrimary ? 'var(--primary)' : 'var(--bg-white)', color: isPrimary ? '#fff' : 'var(--text-dark)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', transition: 'all 0.14s' }}
+      onMouseEnter={e => { if (isPrimary) e.currentTarget.style.background = 'var(--primary-hover)'; else { e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' } }}
+      onMouseLeave={e => { if (isPrimary) e.currentTarget.style.background = 'var(--primary)'; else { e.currentTarget.style.background = 'var(--bg-white)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-dark)' } }}
     >
-      <Icon size={14} />
-      {label}
+      <Icon size={14} />{label}
     </button>
   )
 }
 
-// ── Main Dashboard ────────────────────────────────────────────────────────
-
 export default function Dashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [stats, setStats] = useState(dashboardMock)
+  const [poRows, setPoRows] = useState(FALLBACK_POS)
+  const [loading, setLoading] = useState(true)
 
-  const roleName = user?.role?.replace(/_/g, ' ')
-    ?.replace(/\b\w/g, c => c.toUpperCase()) || 'User'
+  const roleName = user?.role?.replace(/_/g, ' ')?.replace(/\b\w/g, c => c.toUpperCase()) || 'User'
 
-  // Extended PO mock with status
-  const poRows = [
-    { po_number: 'PO-001', vendor: 'Infra Supplies',  amount: '₹87,000',  status: 'approved' },
-    { po_number: 'PO-002', vendor: 'Tech Core',       amount: '₹1,40,000', status: 'pending' },
-    { po_number: 'PO-003', vendor: 'OfficeZone Co.',  amount: '₹34,900',  status: 'draft' },
-    { po_number: 'PO-004', vendor: 'CloudNet',        amount: '₹98,500',  status: 'issued' },
-    { po_number: 'PO-005', vendor: 'FastLog',         amount: '₹22,000',  status: 'approved' },
-  ]
+  useEffect(() => {
+    Promise.all([
+      api.get('/dashboard/').catch(() => ({ data: dashboardMock })),
+      api.get('/dashboard/recent-purchase-orders/').catch(() => ({ data: [] })),
+    ]).then(([summaryRes, poRes]) => {
+      setStats(summaryRes.data || dashboardMock)
+      const rows = Array.isArray(poRes.data) ? poRes.data : (poRes.data?.results || [])
+      if (rows.length > 0) setPoRows(rows)
+    }).finally(() => setLoading(false))
+  }, [])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontFamily: 'var(--font)' }}>
 
-      {/* ── Welcome banner ──────────────────────────────────────────── */}
-      <div style={{
-        background: 'var(--secondary)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '20px 26px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
+      {/* Welcome banner */}
+      <div style={{ background: 'var(--secondary)', borderRadius: 'var(--radius-lg)', padding: '20px 26px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{
-            margin: 0, fontSize: 20, fontWeight: 700,
-            color: '#fff', letterSpacing: '-0.3px',
-          }}>
-            Dashboard
-          </h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13.5, color: 'rgba(255,255,255,0.65)' }}>
-            Welcome back, {roleName} — Today's Overview
-          </p>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>Dashboard</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13.5, color: 'rgba(255,255,255,0.65)' }}>Welcome back, {roleName} — Today's Overview</p>
         </div>
-        {dashboardMock.pending_approvals > 0 && (
-          <button
-            onClick={() => navigate('/approvals')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              background: 'rgba(255,153,31,0.18)',
-              border: '1px solid rgba(255,153,31,0.4)',
-              borderRadius: 6, padding: '8px 16px',
-              fontSize: 13, fontWeight: 600, color: '#FFE380',
-              cursor: 'pointer', fontFamily: 'var(--font)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <FiClock size={14} />
-            {dashboardMock.pending_approvals} approval{dashboardMock.pending_approvals !== 1 ? 's' : ''} pending
+        {Number(stats.pending_approvals) > 0 && (
+          <button onClick={() => navigate('/approvals')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(255,153,31,0.18)', border: '1px solid rgba(255,153,31,0.4)', borderRadius: 6, padding: '8px 16px', fontSize: 13, fontWeight: 600, color: '#FFE380', cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap' }}>
+            <FiClock size={14} />{stats.pending_approvals} approval{stats.pending_approvals !== 1 ? 's' : ''} pending
           </button>
         )}
       </div>
 
-      {/* ── 4 Stat cards ──────────────────────────────────────────────── */}
+      {/* 4 Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         {CARDS.map(({ key, title, icon, color, format }) => (
-          <Card
-            key={key}
-            title={title}
-            value={format ? format(dashboardMock[key]) : dashboardMock[key]}
-            icon={icon}
-            color={color}
-          />
+          <Card key={key} title={title} value={loading ? '…' : (format ? format(stats[key] ?? 0) : (stats[key] ?? 0))} icon={icon} color={color} />
         ))}
       </div>
 
-      {/* ── Main content: PO table + Spending chart ─────────────────── */}
+      {/* PO table + Spending chart */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16 }}>
 
-        {/* Recent Purchase Orders */}
-        <div style={{
-          background: 'var(--bg-white)',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid var(--border)',
-          boxShadow: 'var(--shadow-sm)',
-          overflow: 'hidden',
-          display: 'flex', flexDirection: 'column',
-        }}>
-          <div style={{
-            padding: '14px 18px 12px',
-            borderBottom: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          }}>
-            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-dark)' }}>
-              Recent Purchase Orders
-            </h2>
-            <button
-              onClick={() => navigate('/purchase-orders')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: 12, fontWeight: 600, color: 'var(--primary)',
-                fontFamily: 'var(--font)', padding: '4px 8px',
-                borderRadius: 'var(--radius-md)',
-              }}
+        {/* Recent POs */}
+        <div style={{ background: 'var(--bg-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-dark)' }}>Recent Purchase Orders</h2>
+            <button onClick={() => navigate('/purchase-orders')} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--primary)', fontFamily: 'var(--font)', padding: '4px 8px', borderRadius: 'var(--radius-md)' }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-light)'}
               onMouseLeave={e => e.currentTarget.style.background = 'none'}
             >
-              <FiEye size={13} />
-              View all
+              <FiEye size={13} />View all
             </button>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--bg-subtle)', borderBottom: '2px solid var(--border)' }}>
                 {['PO #', 'Vendor', 'Amount', 'Status'].map(h => (
-                  <th key={h} style={{
-                    padding: '9px 16px', textAlign: 'left',
-                    fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
-                    textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
-                  }}>{h}</th>
+                  <th key={h} style={{ padding: '9px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {poRows.map((row, idx) => (
-                <tr
-                  key={idx}
-                  style={{ borderBottom: idx < poRows.length - 1 ? '1px solid var(--border-light)' : 'none', transition: 'background 0.1s' }}
+                <tr key={row.id || idx} style={{ borderBottom: idx < poRows.length - 1 ? '1px solid var(--border-light)' : 'none', transition: 'background 0.1s', cursor: 'pointer' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                   onMouseLeave={e => e.currentTarget.style.background = ''}
                 >
-                  <td style={{ padding: '11px 16px', fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>
-                    {row.po_number}
-                  </td>
-                  <td style={{ padding: '11px 16px', fontSize: 13, color: 'var(--text-dark)' }}>
-                    {row.vendor}
-                  </td>
-                  <td style={{ padding: '11px 16px', fontSize: 13, color: 'var(--text-dark)', fontFamily: 'monospace' }}>
-                    {row.amount}
-                  </td>
-                  <td style={{ padding: '11px 16px' }}>
-                    <POStatus value={row.status} />
-                  </td>
+                  <td style={{ padding: '11px 16px', fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>{row.po_number}</td>
+                  <td style={{ padding: '11px 16px', fontSize: 13, color: 'var(--text-dark)' }}>{row.vendor_name || '—'}</td>
+                  <td style={{ padding: '11px 16px', fontSize: 13, color: 'var(--text-dark)', fontFamily: 'monospace' }}>₹{Number(row.total_amount).toLocaleString('en-IN')}</td>
+                  <td style={{ padding: '11px 16px' }}><POStatus value={row.status} /></td>
                 </tr>
               ))}
             </tbody>
@@ -292,28 +166,15 @@ export default function Dashboard() {
         </div>
 
         {/* Spending Trends */}
-        <div style={{
-          background: 'var(--bg-white)',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid var(--border)',
-          boxShadow: 'var(--shadow-sm)',
-          padding: '14px 18px 16px',
-          display: 'flex', flexDirection: 'column', gap: 16,
-        }}>
-          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-dark)' }}>
-            Spending Trends — Last 6 Months
-          </h2>
-
-          {/* Area chart */}
+        <div style={{ background: 'var(--bg-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', padding: '14px 18px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-dark)' }}>Spending Trends — Last 6 Months</h2>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-              Monthly Spend (₹)
-            </div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Monthly Spend (₹)</div>
             <ResponsiveContainer width="100%" height={120}>
               <AreaChart data={MONTHLY_SPEND} margin={{ top: 2, right: 4, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#0052CC" stopOpacity={0.18} />
+                    <stop offset="5%" stopColor="#0052CC" stopOpacity={0.18} />
                     <stop offset="95%" stopColor="#0052CC" stopOpacity={0} />
                   </linearGradient>
                 </defs>
@@ -325,18 +186,12 @@ export default function Dashboard() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-
-          {/* Pie chart — spend by category */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-              By Category
-            </div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>By Category</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <PieChart width={80} height={80}>
                 <Pie data={CATEGORY_SPEND} dataKey="value" cx={35} cy={35} innerRadius={22} outerRadius={36} paddingAngle={2} strokeWidth={0}>
-                  {CATEGORY_SPEND.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
+                  {CATEGORY_SPEND.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Pie>
               </PieChart>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -355,24 +210,15 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Quick actions ──────────────────────────────────────────────── */}
-      <div style={{
-        background: 'var(--bg-white)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border)',
-        boxShadow: 'var(--shadow-sm)',
-        padding: '16px 20px',
-      }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
-          Quick Actions
-        </div>
+      {/* Quick actions */}
+      <div style={{ background: 'var(--bg-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', padding: '16px 20px' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Quick Actions</div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <QuickBtn icon={FiPlus}  label="+ New RFQ"    onClick={() => navigate('/rfqs')}            variant="primary" />
-          <QuickBtn icon={FiUsers} label="Add Vendor"   onClick={() => navigate('/vendors')} />
+          <QuickBtn icon={FiPlus}  label="+ New RFQ"     onClick={() => navigate('/rfqs')}     variant="primary" />
+          <QuickBtn icon={FiUsers} label="Add Vendor"    onClick={() => navigate('/vendors')} />
           <QuickBtn icon={FiEye}   label="View Invoices" onClick={() => navigate('/invoices')} />
         </div>
       </div>
-
     </div>
   )
 }

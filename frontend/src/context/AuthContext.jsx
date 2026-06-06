@@ -44,12 +44,18 @@ export const AuthProvider = ({ children }) => {
     delete api.defaults.headers.common['Authorization']
   }
 
+  const updateUser = (patch) => {
+    const updated = { ...user, ...patch }
+    setUser(updated)
+    localStorage.setItem('ss_user', JSON.stringify(updated))
+  }
+
   const hasPermission = (perm) => Array.isArray(permissions) && permissions.includes(perm)
 
   const isAuthenticated = !!user && !!accessToken
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, refreshToken, permissions, hasPermission, login, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, accessToken, refreshToken, permissions, hasPermission, login, logout, isAuthenticated, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

@@ -1,6 +1,7 @@
 import secrets
 from datetime import datetime, timezone
 
+from django.utils import timezone as django_tz
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.models import ActivityLog, SessionRecord
@@ -58,3 +59,44 @@ def deactivate_session(user, refresh_token=None):
 
 def generate_reset_token():
     return secrets.token_urlsafe(48)
+
+
+def _next_seq(model_class, number_field, prefix, year):
+    from django.db.models import Max
+    import re
+    pattern = f'{prefix}-{year}-'
+    last = (
+        model_class.objects
+        .filter(**{f'{number_field}__startswith': pattern})
+        .aggregate(m=Max(number_field))['m']
+    )
+    if last:
+        m = re.search(r'-(\d+)$', last)
+        seq = int(m.group(1)) + 1 if m else 1
+    else:
+        seq = 1
+    return f'{prefix}-{year}-{seq:05d}'
+
+
+def generate_rfq_number():
+    from core.models import RFQ
+    year = django_tz.now().year
+    return _next_seq(RFQ, 'rfq_number', 'RFQ', year)
+
+
+def generate_quote_number():
+    from core.models import Quotation
+    year = django_tz.now().year
+    return _next_seq(Quotation, 'quote_number', 'QT', year)
+
+
+def generate_po_number():
+    from core.models import PurchaseOrder
+    year = django_tz.now().year
+    return _next_seq(PurchaseOrder, 'po_number', 'PO', year)
+
+
+def generate_invoice_number():
+    from core.models import Invoice
+    year = django_tz.now().year
+    return _next_seq(Invoice, 'invoice_number', 'INV', year)
