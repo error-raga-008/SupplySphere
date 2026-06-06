@@ -136,7 +136,7 @@ class ActivityLog(models.Model):
 
 
 class Vendor(models.Model):
-	name = models.CharField(max_length=255)
+	name = models.CharField(max_length=255, db_column='company_name')
 	status = models.CharField(max_length=50)
 	created_at = models.DateTimeField()
 

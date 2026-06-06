@@ -6,6 +6,12 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def seed_roles(apps, schema_editor):
+    Role = apps.get_model('core', 'Role')
+    for name in ['admin', 'procurement_officer', 'vendor', 'manager']:
+        Role.objects.get_or_create(name=name)
+
+
 class Migration(migrations.Migration):
 
     initial = True
@@ -116,4 +122,5 @@ class Migration(migrations.Migration):
                 'ordering': ['-created_at'],
             },
         ),
+        migrations.RunPython(seed_roles, migrations.RunPython.noop),
     ]
