@@ -2,6 +2,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from core.views import (
+    ActivityLogViewSet,
     DashboardSummaryAPIView,
     ForgotPasswordAPIView,
     LoginAPIView,
@@ -19,6 +20,7 @@ from core.views import (
 )
 
 router = DefaultRouter()
+router.register(r'activity-logs', ActivityLogViewSet, basename='activity-logs')
 router.register(r'notifications', NotificationViewSet, basename='notifications')
 
 urlpatterns = [

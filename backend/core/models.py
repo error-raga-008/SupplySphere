@@ -136,6 +136,7 @@ class ActivityLog(models.Model):
 
 
 class Vendor(models.Model):
+	user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
 	name = models.CharField(max_length=255, db_column='company_name')
 	status = models.CharField(max_length=50)
 	created_at = models.DateTimeField()

@@ -8,12 +8,18 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.filters import OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
-from core.models import ApprovalWorkflow, Invoice, Notification, PasswordReset, PurchaseOrder, Quotation, RFQ, Role, User, Vendor
-from core.permissions import HasDashboardAccess, IsOwnerOrAdmin
+from core.filters import ActivityLogFilter
+from core.models import ActivityLog, ApprovalWorkflow, Invoice, Notification, PasswordReset, PurchaseOrder, Quotation, RFQ, Role, User, Vendor
+from core.pagination import ActivityLogPagination
+from core.permissions import CanViewDashboard, IsAdminOnly, IsOwnerOrAdmin
 from core.serializers import (
 	AuthUserSerializer,
+	ActivityLogSerializer,
+	RecentActivityLogSerializer,
 	DashboardSummarySerializer,
 	ForgotPasswordSerializer,
 	LoginSerializer,
@@ -92,11 +98,7 @@ class TokenRefreshAPIView(APIView):
 		new_refresh = data.get('refresh')
 		if new_refresh:
 			rotate_session_token(session, refresh_token, new_refresh)
-		return Response({
-			'access': data['access'],
-			'refresh': new_refresh or refresh_token,
-			**build_auth_payload(session, access=data['access'], refresh=new_refresh or refresh_token),
-		})
+		return Response(build_auth_payload(session, access=data['access'], refresh=new_refresh or refresh_token))
 
 
 class ForgotPasswordAPIView(APIView):
@@ -106,6 +108,7 @@ class ForgotPasswordAPIView(APIView):
 		serializer = ForgotPasswordSerializer(data=request.data)
 		serializer.is_valid(raise_exception=True)
 		user = User.objects.filter(email__iexact=serializer.validated_data['email']).first()
+		log_activity_user = user if user else None
 		if user:
 			token = generate_reset_token()
 			PasswordReset.objects.create(
@@ -114,6 +117,13 @@ class ForgotPasswordAPIView(APIView):
 				expires_at=timezone.now() + timedelta(days=1),
 				used=False,
 			)
+		create_activity_log(
+			user=log_activity_user,
+			action='auth.password_reset_request',
+			entity_type='user',
+			entity_id=user.id if user else serializer.validated_data['email'],
+			request=request,
+		)
 		return Response({'detail': 'If the email exists, a reset token has been generated.'})
 
 
@@ -166,8 +176,26 @@ class ProfileAPIView(APIView):
 		return Response(build_auth_payload(request.user))
 
 
+class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
+	serializer_class = ActivityLogSerializer
+	permission_classes = [IsAdminOnly]
+	filter_backends = [DjangoFilterBackend, OrderingFilter]
+	filterset_class = ActivityLogFilter
+	ordering_fields = ['created_at']
+	ordering = ['-created_at']
+	pagination_class = ActivityLogPagination
+
+	def get_queryset(self):
+		return ActivityLog.objects.select_related('user', 'user__role').order_by('-created_at')
+
+	@action(detail=False, methods=['get'], url_path='recent')
+	def recent(self, request):
+		queryset = self.filter_queryset(self.get_queryset())[:20]
+		return Response(RecentActivityLogSerializer(queryset, many=True).data)
+
+
 class DashboardSummaryAPIView(APIView):
-	permission_classes = [HasDashboardAccess]
+	permission_classes = [CanViewDashboard]
 
 	def get(self, request):
 		data = {
@@ -182,7 +210,7 @@ class DashboardSummaryAPIView(APIView):
 
 
 class RecentRFQsAPIView(APIView):
-	permission_classes = [HasDashboardAccess]
+	permission_classes = [CanViewDashboard]
 
 	def get(self, request):
 		queryset = RFQ.objects.select_related('created_by').order_by('-created_at')[:10]
@@ -190,7 +218,7 @@ class RecentRFQsAPIView(APIView):
 
 
 class RecentQuotationsAPIView(APIView):
-	permission_classes = [HasDashboardAccess]
+	permission_classes = [CanViewDashboard]
 
 	def get(self, request):
 		queryset = Quotation.objects.select_related('vendor').order_by('-created_at')[:10]
@@ -198,7 +226,7 @@ class RecentQuotationsAPIView(APIView):
 
 
 class PendingApprovalsAPIView(APIView):
-	permission_classes = [HasDashboardAccess]
+	permission_classes = [CanViewDashboard]
 
 	def get(self, request):
 		queryset = ApprovalWorkflow.objects.select_related('quotation').filter(status='pending').order_by('-initiated_at')[:10]
@@ -206,7 +234,7 @@ class PendingApprovalsAPIView(APIView):
 
 
 class RecentPurchaseOrdersAPIView(APIView):
-	permission_classes = [HasDashboardAccess]
+	permission_classes = [CanViewDashboard]
 
 	def get(self, request):
 		queryset = PurchaseOrder.objects.select_related('vendor').order_by('-created_at')[:10]
@@ -214,7 +242,7 @@ class RecentPurchaseOrdersAPIView(APIView):
 
 
 class RecentInvoicesAPIView(APIView):
-	permission_classes = [HasDashboardAccess]
+	permission_classes = [CanViewDashboard]
 
 	def get(self, request):
 		queryset = Invoice.objects.select_related('vendor').order_by('-created_at')[:10]
@@ -224,7 +252,7 @@ class RecentInvoicesAPIView(APIView):
 class NotificationViewSet(viewsets.ModelViewSet):
 	serializer_class = NotificationSerializer
 	permission_classes = [IsAuthenticated]
-	http_method_names = ['get', 'patch', 'head', 'options']
+	http_method_names = ['get', 'patch', 'post', 'head', 'options']
 
 	def get_queryset(self):
 		user = self.request.user
@@ -234,13 +262,39 @@ class NotificationViewSet(viewsets.ModelViewSet):
 		return queryset.filter(user=user)
 
 	def perform_update(self, serializer):
-		serializer.save()
+		old_values = NotificationSerializer(serializer.instance).data
+		notification = serializer.save()
+		create_activity_log(
+			user=self.request.user,
+			action='notification.update',
+			entity_type='notification',
+			entity_id=notification.id,
+			old_values=old_values,
+			new_values=NotificationSerializer(notification).data,
+			request=self.request,
+		)
 
 	@action(detail=True, methods=['patch'], url_path='read')
 	def read(self, request, pk=None):
 		notification = self.get_object()
 		if notification.user_id != request.user.id and getattr(request.user.role, 'name', None) != 'admin':
 			return Response({'detail': 'Not allowed.'}, status=status.HTTP_403_FORBIDDEN)
+		old_values = NotificationSerializer(notification).data
 		notification.is_read = True
 		notification.save(update_fields=['is_read'])
+		create_activity_log(
+			user=request.user,
+			action='notification.read',
+			entity_type='notification',
+			entity_id=notification.id,
+			old_values=old_values,
+			new_values=NotificationSerializer(notification).data,
+			request=request,
+		)
 		return Response(self.get_serializer(notification).data)
+
+	@action(detail=False, methods=['post'], url_path='mark-all-read')
+	def mark_all_read(self, request):
+		queryset = self.get_queryset().filter(is_read=False)
+		marked_count = queryset.update(is_read=True)
+		return Response({'marked_count': marked_count})

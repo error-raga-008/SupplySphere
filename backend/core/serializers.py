@@ -3,7 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 
-from core.models import ApprovalWorkflow, Invoice, Notification, PasswordReset, PurchaseOrder, Quotation, RFQ, Role, User
+from core.models import ActivityLog, ApprovalWorkflow, Invoice, Notification, PasswordReset, PurchaseOrder, Quotation, RFQ, Role, User
 
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -184,3 +184,47 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['name', 'phone']
+
+
+class ActivityLogSerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ActivityLog
+        fields = [
+            'id',
+            'username',
+            'role',
+            'action',
+            'entity_type',
+            'entity_id',
+            'old_values',
+            'new_values',
+            'ip_address',
+            'created_at',
+        ]
+
+    def get_username(self, obj):
+        if obj.user_id and obj.user:
+            return obj.user.name
+        return None
+
+    def get_role(self, obj):
+        if obj.user_id and obj.user and obj.user.role_id and obj.user.role:
+            return obj.user.role.name
+        return None
+
+
+class RecentActivityLogSerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField()
+    timestamp = serializers.DateTimeField(source='created_at', read_only=True)
+
+    class Meta:
+        model = ActivityLog
+        fields = ['username', 'action', 'timestamp']
+
+    def get_username(self, obj):
+        if obj.user_id and obj.user:
+            return obj.user.name
+        return None

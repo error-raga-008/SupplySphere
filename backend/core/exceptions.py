@@ -14,21 +14,23 @@ def custom_exception_handler(exc, context):
             if isinstance(exc, (InvalidToken, TokenError)) and 'expired' in lowered_message:
                 message = 'Token expired'
             elif isinstance(exc, PermissionDenied):
-                message = 'Permission denied'
+                message = 'You do not have permission to perform this action.'
+            elif isinstance(exc, NotAuthenticated):
+                message = 'Authentication required.'
             elif isinstance(exc, AuthenticationFailed) and 'invalid' in lowered_message:
                 message = 'Invalid credentials'
-            return Response({'error': message}, status=getattr(exc, 'status_code', 400))
+            return Response({'detail': message}, status=getattr(exc, 'status_code', 400))
         return response
 
     if isinstance(exc, PermissionDenied):
-        response.data = {'error': 'Permission denied'}
+        response.data = {'detail': 'You do not have permission to perform this action.'}
     elif isinstance(exc, AuthenticationFailed):
-        response.data = {'error': 'Invalid credentials'}
+        response.data = {'detail': 'Invalid credentials'}
     elif isinstance(exc, NotAuthenticated):
-        response.data = {'error': 'Authentication required'}
+        response.data = {'detail': 'Authentication required.'}
     elif isinstance(exc, (InvalidToken, TokenError)):
         detail = getattr(exc, 'detail', None) or str(exc)
         message = 'Token expired' if 'expired' in str(detail).lower() else 'Invalid token'
-        response.data = {'error': message}
+        response.data = {'detail': message}
 
     return response
