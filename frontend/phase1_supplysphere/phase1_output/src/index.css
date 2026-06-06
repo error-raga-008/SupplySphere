@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&display=swap');
+
+/* ── Design tokens from Axiolance design language ── */
+:root {
+  --primary:        #007dfc;
+  --primary-hover:  #0473e5;
+  --secondary:      #012b54;
+  --secondary-dark: #011e3b;
+  --bg:             #f9f8f4;
+  --bg-white:       #ffffff;
+  --text:           #31485f;
+  --text-dark:      #1e2c39;
+  --text-black:     #222222;
+  --border:         #dbdbdb;
+  --border-light:   rgba(191,197,203,0.24);
+  --muted:          #bfc5cb;
+  --accent:         #c9f31d;
+
+  --radius-sm:   8px;
+  --radius-md:   10px;
+  --radius-lg:   15px;
+  --radius-xl:   20px;
+  --radius-full: 100px;
+
+  --shadow-sm:   rgba(233,233,233,0.2) 0px 2px 5px 0px;
+  --shadow-md:   rgba(0,178,137,0.12) 0px 4px 12px 0px;
+  --shadow-blue: rgba(183,219,255,0.7) 0px 0px 16px 2px;
+
+  --font: 'Inter Tight', sans-serif;
+
+  --transition-sm: 0.25s;
+  --transition-md: 0.3s;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font);
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { text-decoration: none; color: inherit; }
+button { font-family: var(--font); cursor: pointer; border: none; }
+input, textarea, select { font-family: var(--font); }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 3px; }

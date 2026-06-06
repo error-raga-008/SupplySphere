@@ -1,3 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-gray-50 text-gray-800;
+}
+
+.container {
+  @apply max-w-7xl mx-auto px-4;
+}
 :root {
   --text: #6b6375;
   --text-h: #08060d;
