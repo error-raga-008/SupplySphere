@@ -29,7 +29,7 @@ from core.serializers import (
 	ResetPasswordSerializer,
 	UserSerializer,
 )
-from core.services import create_activity_log, deactivate_session, generate_reset_token, issue_token_pair, rotate_session_token
+from core.services import create_activity_log, deactivate_session, ensure_session_record_schema, generate_reset_token, issue_token_pair, rotate_session_token
 
 
 class RegisterAPIView(APIView):
@@ -81,6 +81,8 @@ class TokenRefreshAPIView(APIView):
 		refresh_token = request.data.get('refresh')
 		if not refresh_token:
 			return Response({'refresh': ['This field is required.']}, status=status.HTTP_400_BAD_REQUEST)
+
+		ensure_session_record_schema()
 
 		session = (
 			User.objects.filter(auth_sessions__token=refresh_token, auth_sessions__is_active=True)

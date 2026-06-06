@@ -40,12 +40,13 @@ CREATE TABLE password_resets (
 );
 
 CREATE TABLE sessions (
-    id         VARCHAR(128)     PRIMARY KEY,
+    id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id    INT UNSIGNED     NOT NULL,
-    ip_address VARCHAR(45),
-    user_agent TEXT,
+    token      VARCHAR(512)     NOT NULL UNIQUE,
     expires_at DATETIME         NOT NULL,
+    is_active  BOOLEAN          NOT NULL DEFAULT TRUE,
     created_at DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_session_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
