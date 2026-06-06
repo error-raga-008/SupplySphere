@@ -29,7 +29,7 @@ from core.serializers import (
 	ResetPasswordSerializer,
 	UserSerializer,
 )
-from core.services import create_activity_log, deactivate_session, ensure_session_record_schema, generate_reset_token, issue_token_pair, rotate_session_token
+from core.services import build_auth_payload, create_activity_log, deactivate_session, ensure_session_record_schema, generate_reset_token, issue_token_pair, rotate_session_token
 
 
 class RegisterAPIView(APIView):
@@ -41,11 +41,7 @@ class RegisterAPIView(APIView):
 		user = serializer.save()
 		tokens = issue_token_pair(user)
 		create_activity_log(user=user, action='auth.register', entity_type='user', entity_id=user.id, new_values=UserSerializer(user).data, request=request)
-		return Response({
-			'access': tokens['access'],
-			'refresh': tokens['refresh'],
-			'user': AuthUserSerializer(user).data,
-		}, status=status.HTTP_201_CREATED)
+		return Response(build_auth_payload(user, access=tokens['access'], refresh=tokens['refresh']), status=status.HTTP_201_CREATED)
 
 
 class LoginAPIView(APIView):
@@ -57,11 +53,7 @@ class LoginAPIView(APIView):
 		user = serializer.validated_data['user']
 		tokens = issue_token_pair(user)
 		create_activity_log(user=user, action='auth.login', entity_type='user', entity_id=user.id, request=request)
-		return Response({
-			'access': tokens['access'],
-			'refresh': tokens['refresh'],
-			'user': AuthUserSerializer(user).data,
-		})
+		return Response(build_auth_payload(user, access=tokens['access'], refresh=tokens['refresh']))
 
 
 class LogoutAPIView(APIView):
@@ -69,9 +61,11 @@ class LogoutAPIView(APIView):
 
 	def post(self, request):
 		refresh_token = request.data.get('refresh') or request.data.get('refresh_token')
+		if not refresh_token:
+			return Response({'error': 'Refresh token is required.'}, status=status.HTTP_400_BAD_REQUEST)
 		deactivate_session(request.user, refresh_token=refresh_token)
 		create_activity_log(user=request.user, action='auth.logout', entity_type='user', entity_id=request.user.id, request=request)
-		return Response({'detail': 'Logged out successfully.'})
+		return Response({'message': 'Logged out successfully'})
 
 
 class TokenRefreshAPIView(APIView):
@@ -98,7 +92,11 @@ class TokenRefreshAPIView(APIView):
 		new_refresh = data.get('refresh')
 		if new_refresh:
 			rotate_session_token(session, refresh_token, new_refresh)
-		return Response(data)
+		return Response({
+			'access': data['access'],
+			'refresh': new_refresh or refresh_token,
+			**build_auth_payload(session, access=data['access'], refresh=new_refresh or refresh_token),
+		})
 
 
 class ForgotPasswordAPIView(APIView):
@@ -146,12 +144,7 @@ class ProfileAPIView(APIView):
 	permission_classes = [IsAuthenticated]
 
 	def get(self, request):
-		return Response({
-			'name': request.user.name,
-			'email': request.user.email,
-			'phone': request.user.phone,
-			'role': request.user.role.name if request.user.role_id else None,
-		})
+		return Response(build_auth_payload(request.user))
 
 	def put(self, request):
 		serializer = ProfileUpdateSerializer(instance=request.user, data=request.data, partial=True)
@@ -170,12 +163,7 @@ class ProfileAPIView(APIView):
 			new_values=ProfileUpdateSerializer(request.user).data,
 			request=request,
 		)
-		return Response({
-			'name': request.user.name,
-			'email': request.user.email,
-			'phone': request.user.phone,
-			'role': request.user.role.name if request.user.role_id else None,
-		})
+		return Response(build_auth_payload(request.user))
 
 
 class DashboardSummaryAPIView(APIView):

@@ -29,6 +29,27 @@ def create_activity_log(*, user=None, action, entity_type='', entity_id='', old_
     )
 
 
+def build_auth_payload(user, *, access=None, refresh=None):
+    from core.permissions import get_role_permissions
+    role_name = getattr(user.role, 'name', None) if getattr(user, 'role_id', None) else None
+    payload = {
+        'user': {
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'phone': user.phone,
+            'role': role_name,
+        },
+        'role': role_name,
+        'permissions': get_role_permissions(role_name),
+    }
+    if access is not None:
+        payload['access'] = access
+    if refresh is not None:
+        payload['refresh'] = refresh
+    return payload
+
+
 def ensure_session_record_schema():
     global _SESSION_SCHEMA_CHECKED
 
@@ -92,6 +113,11 @@ def deactivate_session(user, refresh_token=None):
     queryset = SessionRecord.objects.filter(user=user, is_active=True)
     if refresh_token:
         queryset = queryset.filter(token=refresh_token)
+        token = RefreshToken(refresh_token)
+        try:
+            token.blacklist()
+        except Exception:
+            pass
     return queryset.update(is_active=False)
 
 
