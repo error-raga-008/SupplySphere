@@ -10,7 +10,7 @@ export default function Navbar() {
       <div className="flex items-center gap-4 flex-1">
         <button className="lg:hidden text-[var(--text)] hover:text-[var(--primary)] transition-colors">
           <MdMenu className="w-6 h-6" />
-        </button>
+        </button> 
 
         {/* Search Bar */}
         <div className="hidden md:flex items-center relative max-w-md w-full">
@@ -33,7 +33,7 @@ export default function Navbar() {
 
         {/* User Profile Dropdown */}
         <div className="relative group">
-          <button className="flex items-center gap-3 hover:bg-[var(--bg)] p-1.5 rounded-[var(--radius-md)] transition-colors">
+          <button className="flex items-center gap-3 cursor-pointer rounded-[var(--radius-md)] transition-colors bg-[#80808019] hover:bg-[#8080804b] p-2 rounded-2xl">
             <div className="w-9 h-9 rounded-full bg-[var(--primary)] bg-opacity-10 text-[var(--primary)] flex items-center justify-center">
               <MdPerson className="w-6 h-6 text-black" />
             </div>
@@ -46,16 +46,18 @@ export default function Navbar() {
           {/* Dropdown Menu */}
           <div className="absolute right-0 mt-1 w-48 bg-[var(--bg-white)] rounded-[var(--radius-md)] shadow-[var(--shadow-md)] border border-[var(--border-light)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
             <div className="py-2">
-              <button className="w-full text-left px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--bg)] hover:text-[var(--primary)] transition-colors">
+              <button 
+              className="w-full text-left px-4 py-2 text-sm text-[var(--text)] hover:bg-[#80808046] hover:cursor-pointer hover:text-[var(--primary)] transition-colors"
+              >
                 View Profile
               </button>
-              <button className="w-full text-left px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--bg)] hover:text-[var(--primary)] transition-colors">
+              <button className="w-full text-left px-4 py-2 text-sm text-[var(--text)] hover:bg-[#80808046] hover:cursor-pointer hover:text-[var(--primary)] transition-colors">
                 Settings
               </button>
               <div className="h-px bg-[var(--border-light)] my-1"></div>
               <button 
                 onClick={logout}
-                className="w-full text-left px-4 py-2 text-sm text-[#f23838] hover:cursor-pointer hover:text-re hover:bg-opacity-10 transition-colors"
+                className="w-full text-left px-4 py-2 text-sm text-[#f23838] hover:cursor-pointer hover:bg-[#ff00003a] hover:text-[red] hover:bg-opacity-10 transition-colors"
               >
                 Logout
               </button>
