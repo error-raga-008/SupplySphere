@@ -38,7 +38,7 @@ export default function ActivityLogs() {
                   </span>
                 </div>
                 <p className="text-sm text-[var(--text)] mb-2">{log.details}</p>
-                <div className="text-xs font-medium text-[var(--primary)] bg-[var(--primary)] bg-opacity-10 inline-block px-2 py-1 rounded-md">
+                <div className="text-xs font-medium text-white bg-[var(--primary)] bg-opacity-10 inline-block px-2 py-1 rounded-md">
                   User: {log.user}
                 </div>
               </div>
